@@ -2,7 +2,7 @@
 
 ## day 1 — 2026-11-11 — a block, a car, a sunset
 
-the game has a name and a place: **Port Solena**, a pastel coastal city that lights up at night.
+the game has a name and a place: **Bayhaven**, a pastel coastal city that lights up at night.
 
 what's in the build:
 - one playable city block by the sea: pastel low-poly buildings with shopfronts, neon trim and

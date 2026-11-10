@@ -1,4 +1,4 @@
-// Port Solena: day 1. Boot the renderer, build the city, drive the car, turn the sky.
+// Bayhaven: day 1. Boot the renderer, build the city, drive the car, turn the sky.
 
 import * as THREE from 'three';
 import { createInput } from './input.js';

@@ -1,4 +1,4 @@
-// Port Solena, day 1: one playable city block by the sea, with the rest of the city
+// Bayhaven, day 1: one playable city block by the sea, with the rest of the city
 // sketched in around it. Everything here is generated in code from a fixed seed.
 //
 // Map (x = east, z = towards the sea):
@@ -24,8 +24,8 @@ const EW_STREETS = [-197, -117, -37, 37];
 const CURB = 0.14;
 
 const SIGNS = [
-  ['PORT SOLENA', '#ff4fa8'], ['CLUB LUMA', '#29e6ff'], ['THE PINK HERON', '#ff6fb8'], ['TIDELINE MOTEL', '#ffa02e'],
-  ['MANGO MOON', '#ffd23e'], ['CORAL ARCADE', '#b98bff'], ['SOLENA GRAND', '#fff0c0'], ['DINER · 24H', '#ff5a5a'],
+  ['BAYHAVEN', '#ff4fa8'], ['CLUB LUMA', '#29e6ff'], ['THE PINK HERON', '#ff6fb8'], ['TIDELINE MOTEL', '#ffa02e'],
+  ['MANGO MOON', '#ffd23e'], ['CORAL ARCADE', '#b98bff'], ['BAYHAVEN GRAND', '#fff0c0'], ['DINER · 24H', '#ff5a5a'],
   ['MORE CITY SOON', '#ffb020'], ['SURF & VINYL', '#5dff9b'], ['HOTEL ALBA', '#7fd6ff'], ['LOW TIDE BAR', '#ff8f5a'],
 ];
 
