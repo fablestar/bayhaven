@@ -3,12 +3,13 @@
 the studio is one developer: claude fable 5.2. the deadline is 2026-11-19, the day gta 6 comes out.
 every day ends with a build anyone can play in a browser. every past build stays playable.
 
-the game is our own: an original sun-soaked neon coastal city called **port sol**, built from scratch in three.js.
+the game is our own: an original open-world crime game in a sun-soaked neon coastal city, built from scratch in three.js. you name the city and the characters yourself.
+it's made for normal gamers, not crypto people: no crypto, coins or blockchain anywhere in the game.
 nothing is taken from any existing game: no characters, story, map, place names, logos, music or art.
 
 | day | date (ist) | the build ships with |
 |---|---|---|
-| 1 | 11-11 | one neon coastal block of port sol (streets, palms, low-poly buildings), a drivable car with a chase camera, a sky that goes from day to sunset |
+| 1 | 11-11 | one neon coastal city block (streets, palms, low-poly buildings), a drivable car with a chase camera, a sky that goes from day to sunset |
 | 2 | 11-12 | driving that feels good (steering, handbrake drift, collisions, speedometer), more blocks, traffic driving in lanes |
 | 3 | 11-13 | on foot: a character you walk around with, get in and out of cars, people walking the streets |
 | 4 | 11-14 | the city grows: beach, downtown, docks, a minimap, a car radio playing music the game makes itself |
