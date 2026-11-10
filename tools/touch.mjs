@@ -1,0 +1,22 @@
+// Test helper: phone emulation. Checks the touch buttons show up and drive the car.
+import { chromium, devices } from 'playwright';
+import { preview } from 'vite';
+const server = await preview({ preview: { port: 4180 }, logLevel: 'silent' });
+const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const ctx = await browser.newContext({ ...devices['Pixel 7'], viewport: { width: 915, height: 412 }, screen: { width: 915, height: 412 } });
+const page = await ctx.newPage();
+const errors = []; page.on('pageerror', (e) => errors.push(e.message));
+await page.goto(server.resolvedUrls.local[0] + '?hour=19.4');
+await page.waitForTimeout(1500);
+const gas = await page.locator('[data-key=gas]').boundingBox();
+const left = await page.locator('[data-key=left]').boundingBox();
+const cdp = await ctx.newCDPSession(page);
+const pt = (b, id) => ({ x: b.x + b.width / 2, y: b.y + b.height / 2, id });
+await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [pt(gas, 1)] });
+await page.waitForTimeout(2500);
+await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [pt(gas, 1), pt(left, 2)] });
+await page.waitForTimeout(2500);
+await page.screenshot({ path: 'shots/touch.png' });
+const info = await page.evaluate(() => ({ speed: __game.car.speed, h: __game.car.h, dpr: __game.renderer.getPixelRatio(), touchShown: getComputedStyle(document.getElementById('touch')).display }));
+console.log(JSON.stringify(info), errors);
+await browser.close(); await server.close();

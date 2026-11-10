@@ -10,11 +10,11 @@ const WHEELS = [[0.84, 1.38], [-0.84, 1.38], [0.84, -1.38], [-0.84, -1.38]]; // 
 // Push the body shape into a builder. The car faces +z.
 function addBody(B, paint, accent) {
   const dark = 0x1b1924, glass = 0x16263c;
-  B.box(0, 0.40, 0, 1.92, 0.34, 4.46, dark, { bottom: true });            // sills + bumpers
-  B.box(0, 0.74, -0.70, 1.86, 0.40, 2.90, paint);                          // main body
+  B.box(0, 0.36, 0, 1.92, 0.24, 4.46, dark, { bottom: true });            // sills + bumpers
+  B.box(0, 0.70, -0.70, 1.86, 0.48, 2.90, paint);                          // main body
   // wedge nose: the hood slopes down to the front
   const x = 0.93, z0 = 0.75, z1 = 2.17;
-  B.hexa([[-x, 0.54, z0], [x, 0.54, z0], [x, 0.54, z1], [-x, 0.54, z1],
+  B.hexa([[-x, 0.46, z0], [x, 0.46, z0], [x, 0.46, z1], [-x, 0.46, z1],
           [-x, 0.94, z0], [x, 0.94, z0], [x, 0.74, z1], [-x, 0.74, z1]], paint);
   // cabin: glass, narrower at the top
   B.hexa([[-0.86, 0.94, -1.30], [0.86, 0.94, -1.30], [0.86, 0.94, 0.80], [-0.86, 0.94, 0.80],
@@ -95,8 +95,8 @@ export function createCar(scene, world) {
   const beamMat = new THREE.MeshBasicMaterial({
     map: glowTexture(), color: 0xfff0c8, transparent: true, opacity: 0,
     blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
-  const beam = new THREE.Mesh(new THREE.PlaneGeometry(7, 16), beamMat);
-  beam.rotation.x = -Math.PI / 2; beam.position.set(0, 0.06, 8.5);
+  const beam = new THREE.Mesh(new THREE.PlaneGeometry(8, 24), beamMat);
+  beam.rotation.x = -Math.PI / 2; beam.position.set(0, 0.06, 11);
   group.add(beam);
 
   scene.add(group);
@@ -127,7 +127,7 @@ export function createCar(scene, world) {
         car.x += dx * push; car.z += dz * push; cx += dx * push; cz += dz * push;
         const vn = car.vx * dx + car.vz * dz;
         if (vn < 0) { // lose the speed going into the wall, keep sliding along it
-          car.vx -= dx * vn * 1.25; car.vz -= dz * vn * 1.25;
+          car.vx -= dx * vn * 1.05; car.vz -= dz * vn * 1.05;
           car.vx *= 0.97; car.vz *= 0.97;
         }
       }
@@ -190,7 +190,7 @@ export function createCar(scene, world) {
 
     headMat.color.setScalar(0.75 + night * 0.6);
     tailMat.color.setRGB(car.braking ? 1.6 : 0.5 + night * 0.35, car.braking ? 0.16 : 0.04, car.braking ? 0.12 : 0.06);
-    beamMat.opacity = night * 0.55;
+    beamMat.opacity = night * 0.8;
     shadow.material.opacity = 0.6 - night * 0.25;
   };
 

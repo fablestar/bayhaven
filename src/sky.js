@@ -64,9 +64,11 @@ void main() {
   col = mix(col, discCol, disc);
 
   // stars
-  vec2 sp = d.xz / (abs(d.y) + 0.35) * 70.0;
-  float star = step(0.986, hash(floor(sp))) * smoothstep(0.3, 0.0, length(fract(sp) - 0.5));
-  col += star * uNight * uNight * smoothstep(0.02, 0.25, d.y) * (0.5 + 0.5 * hash(floor(sp) + 3.0));
+  vec3 sp = d * 95.0;
+  vec3 cell = floor(sp);
+  float sh = hash(cell.xy + cell.z * 17.3);
+  float star = step(0.992, sh) * smoothstep(0.45, 0.1, length(fract(sp) - 0.5));
+  col += star * uNight * uNight * smoothstep(0.03, 0.3, d.y) * (0.4 + 0.6 * hash(cell.xz + 3.0));
 
   // drifting clouds
   vec2 uv = d.xz / (d.y + 0.14) * 1.25 + vec2(uTime * 0.012, uTime * 0.004);
