@@ -1,15 +1,12 @@
 // Bayhaven, day 1: one playable city block by the sea, with the rest of the city
 // sketched in around it. Everything here is generated in code from a fixed seed.
-//
-// Map (x = east, z = towards the sea):
-//   - the central block sits at the origin, with a ring of streets around it
-//   - five neighbour blocks to the north, east and west
-//   - a palm promenade and the beach to the south, then the ocean
-//   - further out: big simple towers for the skyline
+// Map (x = east, z = towards the sea): the central block at the origin with a ring of
+// streets, five neighbour blocks, a palm promenade and the beach to the south, then the sea.
 
 import * as THREE from 'three';
 import { MeshBuilder, rng, glowTexture } from './builder.js';
 import { createParkedCar } from './car.js';
+import { signAtlas, grainTexture } from './textures.js';
 
 const PASTEL = [0xff9eb5, 0x8fe3cf, 0xffc98f, 0x9fd2ff, 0xfff1c9, 0xc9a8ff, 0xff8f7a, 0x7fd6e8, 0xf7f3ea];
 const NEON = [0xff3fa4, 0x29e6ff, 0xb46bff, 0xffa02e, 0x5dff9b, 0xff5a5a];
@@ -23,60 +20,12 @@ const NS_STREETS = [-212, -132, -52, 52, 132, 212];
 const EW_STREETS = [-197, -117, -37, 37];
 const CURB = 0.14;
 
-const SIGNS = [
-  ['BAYHAVEN', '#ff4fa8'], ['CLUB LUMA', '#29e6ff'], ['THE PINK HERON', '#ff6fb8'], ['TIDELINE MOTEL', '#ffa02e'],
-  ['MANGO MOON', '#ffd23e'], ['CORAL ARCADE', '#b98bff'], ['BAYHAVEN GRAND', '#fff0c0'], ['DINER · 24H', '#ff5a5a'],
-  ['MORE CITY SOON', '#ffb020'], ['SURF & VINYL', '#5dff9b'], ['HOTEL ALBA', '#7fd6ff'], ['LOW TIDE BAR', '#ff8f5a'],
-];
-
-// All the signs are drawn onto one canvas, so they share one texture and one draw call.
-function signAtlas() {
-  const c = document.createElement('canvas');
-  c.width = 1024; c.height = 1024;
-  const g = c.getContext('2d');
-  g.fillStyle = '#0d0820'; g.fillRect(0, 0, 1024, 1024);
-  g.textAlign = 'center'; g.textBaseline = 'middle';
-  SIGNS.forEach(([text, color], i) => {
-    const x = (i % 2) * 512, y = Math.floor(i / 2) * 128;
-    g.fillStyle = '#140c2c'; g.fillRect(x, y, 512, 128);
-    g.strokeStyle = color; g.lineWidth = 6; g.shadowColor = color; g.shadowBlur = 18;
-    g.strokeRect(x + 12, y + 12, 488, 104);
-    let size = 76;
-    do { g.font = `italic 900 ${size}px "Trebuchet MS", "Arial Black", sans-serif`; size -= 4; }
-    while (g.measureText(text).width > 440 && size > 20);
-    g.fillStyle = color;
-    g.fillText(text, x + 256, y + 68); g.fillText(text, x + 256, y + 68);
-    g.shadowBlur = 0; g.fillStyle = 'rgba(255,255,255,0.75)';
-    g.fillText(text, x + 256, y + 68);
-  });
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
-  return t;
-}
-// Speckled grain for asphalt, paving and sand. Mostly white, so it only darkens a little.
-function grainTexture() {
-  const size = 256, c = document.createElement('canvas');
-  c.width = c.height = size;
-  const g = c.getContext('2d'), img = g.createImageData(size, size), r = rng(77);
-  const coarse = new Float32Array(32 * 32).map(() => r());
-  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
-    let v = 222 + (coarse[(y >> 3) * 32 + (x >> 3)] - 0.5) * 22 + (r() - 0.5) * 44;
-    const speck = r();
-    if (speck > 0.992) v = 255; else if (speck < 0.01) v = 150;
-    const i = (y * size + x) * 4;
-    img.data[i] = img.data[i + 1] = img.data[i + 2] = Math.max(0, Math.min(255, v)); img.data[i + 3] = 255;
-  }
-  g.putImageData(img, 0, 0);
-  const t = new THREE.CanvasTexture(c);
-  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
-  return t;
-}
 function signUV(i) {
   const u0 = (i % 2) / 2, u1 = u0 + 0.5, v1 = 1 - Math.floor(i / 2) / 8, v0 = v1 - 1 / 8;
   return [u0, v0, u1, v0, u1, v1, u0, v1];
 }
 
-export function createWorld(scene) {
+export function createWorld(scene, props) {
   const rnd = rng(20261111);
   const pick = (arr) => arr[Math.floor(rnd() * arr.length)];
   const G = new MeshBuilder();              // ground: asphalt, sidewalks, sand
@@ -287,22 +236,24 @@ export function createWorld(scene) {
     solid(x - 0.3, x + 0.3, z - 0.3, z + 0.3);
   }
 
+  // Lamp posts and barrier sections are props (see props.js): they can be knocked over.
+  // A lamp that goes down takes its halo and its pool of light with it.
+  const lampLights = [];
   function lamp(x, z, dx, dz, arm = 1.8) {
-    const y = world.heightAt(x, z);
-    B.box(x, y + 3.25, z, 0.18, 6.5, 0.18, 0x2b2838);
-    B.box(x + dx * arm / 2, y + 6.45, z + dz * arm / 2, Math.abs(dx) * arm + 0.14, 0.12, Math.abs(dz) * arm + 0.14, 0x2b2838, { bottom: true });
-    const hx = x + dx * arm, hz = z + dz * arm;
-    N.box(hx, y + 6.32, hz, 0.55, 0.14, 0.55, 0xfff2cc, { bottom: true });
+    const y = world.heightAt(x, z), hx = x + dx * arm, hz = z + dz * arm;
+    const light = { glow: glowPts.length, pool: pools.pos.length };
     glowPts.push(hx, y + 6.25, hz);
     pools.flat(hx - 9, hx + 9, hz - 9, hz + 9, 0.2, 0xffffff);
-    solid(x - 0.2, x + 0.2, z - 0.2, z + 0.2);
+    props.add(arm > 2 ? 'lampLong' : 'lamp', x, y, z, Math.atan2(dx, dz), { onChange: (broken) => world.lampLight(light, broken) });
   }
 
-  // Striped barrier across a street where today's playable area ends.
+  // Striped barrier across a street where today's playable area ends. The middle, with
+  // the sign, stays put; the striped sections either side are props.
   function barrier(x, z, alongX, len, face) {
-    const n = Math.round(len / 1.2), seg = len / n;
+    const sections = Math.floor((len / 2 - 3.6) / 2.4), half = len / 2 - sections * 2.4;
+    const n = Math.round(half * 2 / 1.2), seg = half * 2 / n;
     for (let i = 0; i < n; i++) {
-      const o = -len / 2 + (i + 0.5) * seg, col = i % 2 ? 0xffffff : 0xff7a1e;
+      const o = -half + (i + 0.5) * seg, col = i % 2 ? 0xffffff : 0xff7a1e;
       for (const y of [0.55, 1.05]) {
         if (alongX) B.box(x + o, y, z, seg, 0.3, 0.14, col, { bottom: true });
         else B.box(x, y, z + o, 0.14, 0.3, seg, col, { bottom: true });
@@ -311,10 +262,14 @@ export function createWorld(scene) {
         if (alongX) B.box(x + o, 0.6, z, 0.12, 1.2, 0.5, 0x3a3844); else B.box(x, 0.6, z + o, 0.5, 1.2, 0.12, 0x3a3844);
       }
     }
+    for (const side of [-1, 1]) for (let i = 0; i < sections; i++) {
+      const o = side * (half + 1.2 + i * 2.4);
+      props.add('barrier', alongX ? x + o : x, 0, alongX ? z : z + o, alongX ? 0 : Math.PI / 2);
+    }
     const c = alongX ? { x0: x - 3.3, x1: x + 3.3, z0: z - 0.12, z1: z + 0.12 } : { x0: x - 0.12, x1: x + 0.12, z0: z - 3.3, z1: z + 3.3 };
     cellBox(c, 1.4, 3.1, 0x140c2c);
     S.quad(...wallQuad(c, face, alongX ? x : z, 2.25, 6.4, 1.6, 0.02), 0xffffff, 1, signUV(8));
-    if (alongX) solid(x - len / 2, x + len / 2, z - 0.3, z + 0.3); else solid(x - 0.3, x + 0.3, z - len / 2, z + len / 2);
+    if (alongX) solid(x - half, x + half, z - 0.3, z + 0.3); else solid(x - 0.3, x + 0.3, z - half, z + half);
   }
 
   function umbrella(x, z) {
@@ -486,12 +441,20 @@ export function createWorld(scene) {
   add(L.build(), litMat, 1);
   const poolMat = new THREE.MeshBasicMaterial({ map: glowTexture(), color: 0xffc27a, transparent: true,
     blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
-  add(pools.build(), poolMat, 2);
+  const poolGeo = pools.build();
+  add(poolGeo, poolMat, 2);
   const glowGeo = new THREE.BufferGeometry();
   glowGeo.setAttribute('position', new THREE.Float32BufferAttribute(glowPts, 3));
   const glowMat = new THREE.PointsMaterial({ map: glowTexture(), color: 0xffd9a0, size: 7, sizeAttenuation: true,
     transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
   const glows = new THREE.Points(glowGeo, glowMat); glows.renderOrder = 3; scene.add(glows);
+
+  world.lampLight = function ({ glow, pool }, broken) {
+    const g = glowGeo.attributes.position, pp = poolGeo.attributes.position;
+    g.setY(glow / 3, broken ? -999 : glowPts[glow + 1]); g.needsUpdate = true;
+    for (let i = 0; i < 6; i++) pp.setY(pool / 3 + i, broken ? -999 : 0.2);
+    pp.needsUpdate = true;
+  };
 
   world.triangles = G.triangles + M.triangles + B.triangles + P.triangles + N.triangles + S.triangles + L.triangles;
 

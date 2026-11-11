@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#150f3d" />
-  <title>Bayhaven — day 1</title>
+  <title>Bayhaven | Day 2</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%23150f3d'/><circle cx='8' cy='9' r='5' fill='%23ff5fa2'/></svg>" />
   <style>
     html, body { margin: 0; height: 100%; overflow: hidden; background: #150f3d; }
@@ -15,27 +15,44 @@
     #title { top: calc(10px + env(safe-area-inset-top)); left: calc(14px + env(safe-area-inset-left)); }
     #title b { display: block; font-size: 22px; letter-spacing: 3px; font-style: italic;
       color: #fff; text-shadow: 0 0 10px #ff4fa8, 0 0 22px #ff4fa8; }
-    #title span { font-size: 11px; letter-spacing: 2px; opacity: .8; }
+    #title span { font-size: 11px; letter-spacing: 1px; opacity: .8; }
     #clock { top: calc(12px + env(safe-area-inset-top)); right: calc(14px + env(safe-area-inset-right));
       font-size: 18px; letter-spacing: 2px; pointer-events: auto; cursor: pointer; padding: 4px 6px; }
     #speed { bottom: calc(14px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
-      font-size: 30px; font-style: italic; font-weight: bold; text-align: center; }
-    #speed small { font-size: 11px; letter-spacing: 2px; margin-left: 4px; opacity: .8; }
-    #hint { bottom: 70px; left: 50%; transform: translateX(-50%); font-size: 13px; letter-spacing: 1px;
-      background: rgba(21, 15, 61, .55); padding: 8px 14px; border-radius: 20px; white-space: nowrap;
-      transition: opacity .8s; }
+      font-size: 30px; font-style: italic; font-weight: bold; text-align: center; white-space: nowrap; }
+    #speed small { font-size: 11px; letter-spacing: 1px; margin-left: 4px; opacity: .8; }
+    #gear { display: inline-block; min-width: 22px; margin-right: 8px; padding: 1px 5px; border: 2px solid #29e6ff;
+      border-radius: 6px; font-size: 18px; color: #29e6ff; vertical-align: 4px; }
+    #revs { height: 4px; margin-top: 3px; background: rgba(255, 255, 255, .22); border-radius: 2px; overflow: hidden; }
+    #rev { height: 100%; width: 0; background: #29e6ff; }
+    #rev.hot { background: #ff3fa4; }
+    #drift { top: 22%; left: 12px; right: 12px; text-align: center; font-size: 26px; font-style: italic; font-weight: bold;
+      color: #fff; text-shadow: 0 0 10px #ff3fa4, 0 0 22px #ff3fa4; opacity: 0; transition: opacity .25s; }
+    #drift.show { opacity: 1; }
+    #drift.good { text-shadow: 0 0 10px #5dff9b, 0 0 22px #5dff9b; }
+    #drift.bad { text-shadow: 0 0 10px #ff5a5a, 0 0 22px #ff5a5a; }
+    #drop { top: calc(58px + env(safe-area-inset-top)); left: calc(14px + env(safe-area-inset-left)); max-width: 60vw;
+      font-size: 12px; background: rgba(21, 15, 61, .55); padding: 4px 10px; border-radius: 12px; }
+    #hint { bottom: 76px; left: 12px; right: 12px; width: fit-content; max-width: 600px; margin: 0 auto; box-sizing: border-box;
+      font-size: 13px; line-height: 1.5; text-align: center; background: rgba(21, 15, 61, .55); padding: 8px 14px;
+      border-radius: 20px; transition: opacity .8s; }
+    #hint .touch { display: none; }
+    body.clip #hint, body.clip #touch, body.clip #drop { display: none; }
     #touch { display: none; }
-    .pad { position: fixed; bottom: calc(18px + env(safe-area-inset-bottom)); display: flex; gap: 12px; }
+    .pad { position: fixed; bottom: calc(18px + env(safe-area-inset-bottom)); display: grid;
+      grid-template-columns: 72px 72px; gap: 12px; }
     .pad.left { left: calc(16px + env(safe-area-inset-left)); }
     .pad.right { right: calc(16px + env(safe-area-inset-right)); }
-    .btn { width: 72px; height: 72px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .55);
-      background: rgba(21, 15, 61, .35); color: #fff; font-size: 26px; display: flex;
+    .btn { width: 72px; height: 72px; box-sizing: border-box; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .55);
+      background: rgba(21, 15, 61, .35); color: #fff; font-size: 26px; display: flex; text-align: center;
       align-items: center; justify-content: center; touch-action: none; }
     .btn.on { background: rgba(255, 79, 168, .6); border-color: #fff; }
-    .btn.small { font-size: 12px; letter-spacing: 1px; font-weight: bold; }
+    .btn.small { font-size: 12px; line-height: 1.15; font-weight: bold; }
     @media (pointer: coarse) {
       #touch { display: block; }
-      #hint { bottom: 110px; }
+      #hint { bottom: calc(200px + env(safe-area-inset-bottom)); }
+      #hint .keys { display: none; }
+      #hint .touch { display: inline; }
       #speed { bottom: auto; top: calc(40px + env(safe-area-inset-top)); left: auto;
         right: calc(14px + env(safe-area-inset-right)); transform: none; font-size: 24px; }
     }
@@ -43,18 +60,27 @@
 </head>
 <body>
   <canvas id="game"></canvas>
-  <div id="title" class="hud"><b>BAYHAVEN</b><span>DAY 1 BUILD · FABLESTAR GAMES</span></div>
-  <div id="clock" class="hud" title="tap to skip time">14:00</div>
-  <div id="speed" class="hud"><span id="kmh">0</span><small>KM/H</small></div>
-  <div id="hint" class="hud">WASD / arrows to drive · T skips time · R resets · M mutes</div>
+  <div id="title" class="hud"><b>BAYHAVEN</b><span>Day 2 build by Fablestar Games</span></div>
+  <div id="clock" class="hud" title="Tap to skip time">14:00</div>
+  <div id="drop" class="hud"></div>
+  <div id="drift" class="hud"></div>
+  <div id="speed" class="hud"><span id="gear">N</span><span id="kmh">0</span><small>km/h</small><div id="revs"><div id="rev"></div></div></div>
+  <div id="hint" class="hud">
+    <span class="keys">WASD or arrows to drive, Space for the handbrake, H for the horn, C changes camera, hold B to look back, T skips time, R resets, M mutes</span>
+    <span class="touch">Hold Gas to drive, hold Handbrake in a turn to slide, tap the clock to skip time</span>
+  </div>
   <div id="touch">
     <div class="pad left">
+      <div class="btn small" data-press="KeyC">Camera</div>
+      <div class="btn small" data-key="horn">Horn</div>
       <div class="btn" data-key="left">◀</div>
       <div class="btn" data-key="right">▶</div>
     </div>
     <div class="pad right">
-      <div class="btn small" data-key="brake">BRAKE</div>
-      <div class="btn small" data-key="gas">GAS</div>
+      <div class="btn small" data-key="handbrake">Hand<br>brake</div>
+      <div class="btn small" data-key="back">Look<br>back</div>
+      <div class="btn small" data-key="brake">Brake</div>
+      <div class="btn small" data-key="gas">Gas</div>
     </div>
   </div>
   <script type="module" src="/src/main.js"></script>
