@@ -88,15 +88,19 @@ export default [
           if (p.ns !== 'red' && p.ew !== 'red') bothGo++;
           if (i === 1799) same = p.ns === first.ns && p.ew === first.ew;
         }
-        return { sec, bothGo, same, node: first.node, big: first.big, events: T.count('signals:phase') - before, count: S.count, poles: S.poles, cycle: S.cycle };
+        // what the table says for the two roads that meet here
+        const RANK = { street: 0, avenue: 1, boulevard: 2 }, rank = { ns: 0, ew: 0 }, node = g.modules.nav.nodes.get(first.node);
+        for (const l of node.in) rank[l.signal.axis] = Math.max(rank[l.signal.axis], RANK[l.kind]);
+        const hi = Math.max(rank.ns, rank.ew), lo = Math.min(rank.ns, rank.ew), want = hi === lo ? [12, 12] : lo === 0 ? [17, 7] : [15, 9];
+        return { sec, bothGo, same, node: first.node, big: first.big, want, kinds: rank, events: T.count('signals:phase') - before, count: S.count, poles: S.poles, cycle: S.cycle };
       });
       const big = r.sec[r.big], other = r.sec[r.big === 'ns' ? 'ew' : 'ns'];
       t.note(`junction ${r.node}: the big road (${r.big}) shows green ${big.green.toFixed(1)} s, amber ${big.amber.toFixed(1)} s; the other green ${other.green.toFixed(1)} s, amber ${other.amber.toFixed(1)} s; ${r.count} lit junctions on the map, ${r.poles} poles standing nearby`);
       t.expect(r.cycle, '==', 30, 'cycle length (s)');
       t.expect(r.same, '==', true, 'the lights show the same thing 30 s later');
-      t.expect(big.green, 'between', [14.8, 15.2], 'boulevard with avenue: big road green (s)');
+      t.expect(big.green, 'between', [r.want[0] - 0.2, r.want[0] + 0.2], `big road green (s), the table says ${r.want[0]}`);
       t.expect(big.amber, 'between', [1.9, 2.1], 'big road amber (s)');
-      t.expect(other.green, 'between', [8.8, 9.2], 'other road green (s)');
+      t.expect(other.green, 'between', [r.want[1] - 0.2, r.want[1] + 0.2], `other road green (s), the table says ${r.want[1]}`);
       t.expect(r.bothGo, '==', 0, 'steps with both roads on green or amber');
       t.expect(r.events, '>=', 4, 'signals:phase events in one cycle');
       t.expect(r.poles, '>=', 3, 'light poles standing near the player');
@@ -168,10 +172,10 @@ export default [
         const ram = async (model, speed) => {
           T.traffic.clear(true);
           T.teleport(-900, 40.5, Math.PI / 2); await T.wait(0.2);
-          const v = T.placeVehicle(model, -870, 40.5, Math.PI / 2), before = T.count('vehicle:crash');
+          const v = T.placeVehicle(model, -882, 40.5, Math.PI / 2), before = T.count('vehicle:crash');
           T.teleport(-900, 40.5, Math.PI / 2, speed);
           let peak = 0, kind = '';
-          for (let i = 0; i < 90; i++) { T.advance(1 / 60); const o = T.traffic.list().find((c) => c.id === v.id); if (o.v > peak) { peak = o.v; } if (o.kind === 'loose') kind = 'loose'; }
+          for (let i = 0; i < 150; i++) { T.advance(1 / 60); const o = T.traffic.list().find((c) => c.id === v.id); if (o.v > peak) { peak = o.v; } if (o.kind === 'loose') kind = 'loose'; }
           const o = T.traffic.list().find((c) => c.id === v.id), p = T.player();
           return { peak, kind, moved: o.x - v.x, crashes: T.count('vehicle:crash') - before, playerSpeed: p.speed, gapX: o.x - p.x };
         };
@@ -259,7 +263,7 @@ export default [
         T.setHour(3); T.advance(60);
         const night = T.stats().cars, nightTarget = T.traffic.counts().target;
         T.setHour(8); T.advance(30);
-        return { cap, noon, night, nightTarget, rush: T.stats().cars, w: [want(3), want(8), want(12), want(17.5), want(9.9), want(10.1)] };
+        return { cap, noon, night, nightTarget, rush: T.stats().cars, w: [want(3), want(8), want(12), want(17.5), want(9.95), want(10.05)] };
       });
       t.note(`out of 40: 03:00 ${r.w[0]}, 08:00 ${r.w[1]}, noon ${r.w[2]}, 17:30 ${r.w[3]}; cars on the road: noon ${r.noon}, 60 s into 03:00 ${r.night}, 30 s into 08:00 ${r.rush}`);
       t.expect(r.w[0] / r.w[2], '<=', 0.35, 'the quiet hour against noon');

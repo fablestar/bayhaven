@@ -15,7 +15,7 @@ export const RING = { near: 120, far: 260, gone: 320, openRoad: 250, thin: 200 }
 // Rush hour (x 1.5 at 08:00 and 17:30) and the quiet hour (x 0.3 at 03:00) are in these rows.
 const BANDS = [0, 5, 7, 10, 16, 19, 24];
 const DENSITY = { tideline: [10, 19, 40, 32, 40, 31], default: [8, 16, 34, 28, 34, 22] };
-const BRAKES_ON = { steer: 0, gas: 0, brake: 1, handbrake: false };
+const BRAKES_ON = { steer: 0, gas: 0, brake: 0.3, handbrake: false };      // a stunned driver, foot half on the brake
 
 // Cars wanted out of 40 at an hour, eased across each band edge over 30 game minutes.
 export function density(district, hour) {
