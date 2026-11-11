@@ -207,7 +207,10 @@ export default {
         g.save();
         g.setTransform(dpr, 0, 0, dpr, 0, 0);
         if ('letterSpacing' in g) g.letterSpacing = '0px';
-        p.draw(g, L.rects[p.id], V, L);
+        // a piece may only paint inside the box that is wiped for it, so nothing is left behind when it moves
+        const r = L.rects[p.id], e = r.bleed;
+        g.beginPath(); g.rect(r.x - e, r.y - e, r.w + e * 2, r.h + e * 2); g.clip();
+        p.draw(g, r, V, L);
         g.restore();
         draws[p.id] = (draws[p.id] || 0) + 1; stats.redraws++;
       }

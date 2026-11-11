@@ -25,12 +25,12 @@ export function layoutFor(W, H, touch, ins) {
   const cash = put('cash', l + m, t + mt, s(120, 190), ph, 4);
   const clock = put('clock', r - m - s(104, 150), t + mt, s(104, 150), ph);
   if (portrait) {
-    put('followers', cash.x + cash.w + gap, t + mt, 92, ph, 2, ['live']);
+    put('followers', cash.x + cash.w + gap, t + mt, 92, ph, 3, ['live']);
     put('live', cash.x + cash.w + gap, t + mt, 126, ph, 2, ['followers']);     // takes the followers' place while live
   } else {
-    put('followers', cash.x + cash.w + gap, t + mt, s(92, 230), ph);
+    put('followers', cash.x + cash.w + gap, t + mt, s(92, 230), ph, 4);
     const lw = s(132, 210);
-    put('live', clock.x - gap - lw, t + mt, lw, ph);
+    put('live', clock.x - gap - lw, t + mt, lw, ph, 4);
   }
 
   const mmSize = s(120, 180), d = s(18, 24), hg = s(6, 10), heatW = 5 * d + 4 * hg;
