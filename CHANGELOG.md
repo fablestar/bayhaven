@@ -1,6 +1,6 @@
 # changelog
 
-## day 1 — 2026-11-11 — a block, a car, a sunset
+## warm-up, before day 1 (2026-11-10): a block, a car, a sunset
 
 the game has a name and a place: **Bayhaven**, a pastel coastal city that lights up at night.
 
