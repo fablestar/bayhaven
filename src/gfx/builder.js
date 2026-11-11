@@ -17,10 +17,26 @@ export { rng } from '../core/rng.js';
 
 const UV_FULL = [0, 0, 1, 0, 1, 1, 0, 1];
 
+// v2: positions are floats, normals are signed bytes and colours are unsigned bytes (18 bytes a
+// vertex with padding instead of 36). The builder writes into typed arrays that grow by doubling
+// and can be used again after reset(), so a streaming chunk does not allocate while it builds.
 export class MeshBuilder {
-  constructor({ uv = false } = {}) {
-    this.pos = []; this.nor = []; this.col = [];
-    this.uvs = uv ? [] : null;
+  constructor({ uv = false, size = 1024 } = {}) {
+    this.p = new Float32Array(size * 3); this.n = new Int8Array(size * 3); this.c = new Uint8Array(size * 3);
+    this.t = uv ? new Float32Array(size * 2) : null;
+    this.count = 0;                        // vertices written
+  }
+
+  reset() { this.count = 0; return this; }
+
+  grow(need) {
+    let size = this.p.length / 3;
+    if (this.count + need <= size) return;
+    while (this.count + need > size) size *= 2;
+    const p = new Float32Array(size * 3); p.set(this.p.subarray(0, this.count * 3)); this.p = p;
+    const n = new Int8Array(size * 3); n.set(this.n.subarray(0, this.count * 3)); this.n = n;
+    const c = new Uint8Array(size * 3); c.set(this.c.subarray(0, this.count * 3)); this.c = c;
+    if (this.t) { const t = new Float32Array(size * 2); t.set(this.t.subarray(0, this.count * 2)); this.t = t; }
   }
 
   // Triangle a,b,c, counter-clockwise seen from the front.
@@ -28,21 +44,27 @@ export class MeshBuilder {
     const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2];
     const vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
     let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
-    const l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l;
-    const k = rgb(color);
-    for (const p of [a, b, c]) {
-      this.pos.push(p[0], p[1], p[2]);
-      this.nor.push(nx, ny, nz);
-      this.col.push(k[0] * shade, k[1] * shade, k[2] * shade);
-    }
+    const l = 127 / (Math.hypot(nx, ny, nz) || 1); nx = Math.round(nx * l); ny = Math.round(ny * l); nz = Math.round(nz * l);
+    const k = rgb(color), s = shade * 255;
+    const r = Math.min(255, k[0] * s + 0.5) | 0, g = Math.min(255, k[1] * s + 0.5) | 0, bl = Math.min(255, k[2] * s + 0.5) | 0;
+    this.grow(3);
+    let i = this.count * 3;
+    const P = this.p, N = this.n, C = this.c;
+    P[i] = a[0]; P[i + 1] = a[1]; P[i + 2] = a[2]; N[i] = nx; N[i + 1] = ny; N[i + 2] = nz; C[i] = r; C[i + 1] = g; C[i + 2] = bl; i += 3;
+    P[i] = b[0]; P[i + 1] = b[1]; P[i + 2] = b[2]; N[i] = nx; N[i + 1] = ny; N[i + 2] = nz; C[i] = r; C[i + 1] = g; C[i + 2] = bl; i += 3;
+    P[i] = c[0]; P[i + 1] = c[1]; P[i + 2] = c[2]; N[i] = nx; N[i + 1] = ny; N[i + 2] = nz; C[i] = r; C[i + 1] = g; C[i + 2] = bl;
+    this.count += 3;
   }
 
   // Quad a,b,c,d, counter-clockwise seen from the front. uv = [au,av, bu,bv, cu,cv, du,dv].
   quad(a, b, c, d, color, shade = 1, uv = UV_FULL) {
+    const at = this.count * 2;
     this.tri(a, b, c, color, shade);
     this.tri(a, c, d, color, shade);
-    if (this.uvs) {
-      this.uvs.push(uv[0], uv[1], uv[2], uv[3], uv[4], uv[5], uv[0], uv[1], uv[4], uv[5], uv[6], uv[7]);
+    if (this.t) {
+      const T = this.t;
+      T[at] = uv[0]; T[at + 1] = uv[1]; T[at + 2] = uv[2]; T[at + 3] = uv[3]; T[at + 4] = uv[4]; T[at + 5] = uv[5];
+      T[at + 6] = uv[0]; T[at + 7] = uv[1]; T[at + 8] = uv[4]; T[at + 9] = uv[5]; T[at + 10] = uv[6]; T[at + 11] = uv[7];
     }
   }
 
@@ -95,17 +117,25 @@ export class MeshBuilder {
     }
   }
 
-  build() {
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute(this.pos, 3));
-    g.setAttribute('normal', new THREE.Float32BufferAttribute(this.nor, 3));
-    g.setAttribute('color', new THREE.Float32BufferAttribute(this.col, 3));
-    if (this.uvs) g.setAttribute('uv', new THREE.Float32BufferAttribute(this.uvs, 2));
-    g.computeBoundingSphere();
+  // A geometry holding a copy of what was written. free: let go of the copies once they are on
+  // the graphics card (chunk meshes: nothing reads them again). groundUv: add world-metre UVs.
+  build({ free = false, groundUv = 0 } = {}) {
+    const g = new THREE.BufferGeometry(), v = this.count;
+    const attr = (name, a) => { if (free) a.onUpload(function () { this.array = null; }); g.setAttribute(name, a); };
+    attr('position', new THREE.BufferAttribute(this.p.slice(0, v * 3), 3));
+    attr('normal', new THREE.BufferAttribute(this.n.slice(0, v * 3), 3, true));
+    attr('color', new THREE.BufferAttribute(this.c.slice(0, v * 3), 3, true));
+    if (this.t) attr('uv', new THREE.BufferAttribute(this.t.slice(0, v * 2), 2));
+    else if (groundUv) {
+      const uv = new Float32Array(v * 2);
+      for (let i = 0; i < v; i++) { uv[i * 2] = this.p[i * 3] / groundUv; uv[i * 2 + 1] = this.p[i * 3 + 2] / groundUv; }
+      attr('uv', new THREE.BufferAttribute(uv, 2));
+    }
+    g.computeBoundingSphere(); g.computeBoundingBox();
     return g;
   }
 
-  get triangles() { return this.pos.length / 9; }
+  get triangles() { return this.count / 3; }
 }
 
 // Soft round glow, painted on a canvas. Used for lamp halos, light pools and headlights.

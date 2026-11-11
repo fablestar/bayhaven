@@ -241,10 +241,10 @@ export function createWorld(scene, props) {
   const lampLights = [];
   function lamp(x, z, dx, dz, arm = 1.8) {
     const y = world.heightAt(x, z), hx = x + dx * arm, hz = z + dz * arm;
-    const light = { glow: glowPts.length, pool: pools.pos.length };
+    const light = { glow: glowPts.length, pool: pools.count * 3 };
     glowPts.push(hx, y + 6.25, hz);
     pools.flat(hx - 9, hx + 9, hz - 9, hz + 9, 0.2, 0xffffff);
-    props.add(arm > 2 ? 'lampLong' : 'lamp', x, y, z, Math.atan2(dx, dz), { onChange: (broken) => world.lampLight(light, broken) });
+    props.add(arm > 2 ? 'lampLong' : 'lamp', x, y, z, Math.atan2(dx, dz), { noLight: true, onChange: (broken) => world.lampLight(light, broken) });
   }
 
   // Striped barrier across a street where today's playable area ends. The middle, with

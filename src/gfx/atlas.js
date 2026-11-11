@@ -7,10 +7,19 @@ const SIGNS = [
   ['BAYHAVEN', '#ff4fa8'], ['CLUB LUMA', '#29e6ff'], ['THE PINK HERON', '#ff6fb8'], ['TIDELINE MOTEL', '#ffa02e'],
   ['MANGO MOON', '#ffd23e'], ['CORAL ARCADE', '#b98bff'], ['BAYHAVEN GRAND', '#fff0c0'], ['DINER · 24H', '#ff5a5a'],
   ['MORE CITY SOON', '#ffb020'], ['SURF & VINYL', '#5dff9b'], ['HOTEL ALBA', '#7fd6ff'], ['LOW TIDE BAR', '#ff8f5a'],
+  ['SHELL YEAH', '#5dff9b'], ['STORM MART', '#ffa02e'], ['SECOND WIND THRIFT', '#b98bff'], ['BIRDBATH CAR WASH', '#29e6ff'],
 ];
+// the cells shop fronts may use (0 is the roof sign, 8 the map-edge board), and a cell's UVs
+export const SHOP_SIGNS = [1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15];
+export function signUV(i) {
+  const u0 = (i % 2) / 2 + 0.0005, u1 = u0 + 0.499, v1 = 1 - Math.floor(i / 2) / 8 - 0.0005, v0 = v1 - 1 / 8 + 0.001;
+  return [u0, v0, u1, v0, u1, v1, u0, v1];
+}
+let signTex = null;
 
 // All the signs are drawn onto one canvas, so they share one texture and one draw call.
 export function signAtlas() {
+  if (signTex) return signTex;
   const c = document.createElement('canvas');
   c.width = 1024; c.height = 1024;
   const g = c.getContext('2d');
@@ -31,10 +40,12 @@ export function signAtlas() {
   });
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
-  return t;
+  return (signTex = t);
 }
+let grainTex = null;
 // Speckled grain for asphalt, paving and sand. Mostly white, so it only darkens a little.
 export function grainTexture() {
+  if (grainTex) return grainTex;
   const size = 256, c = document.createElement('canvas');
   c.width = c.height = size;
   const g = c.getContext('2d'), img = g.createImageData(size, size), r = rng(77);
@@ -49,5 +60,5 @@ export function grainTexture() {
   g.putImageData(img, 0, 0);
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
-  return t;
+  return (grainTex = t);
 }

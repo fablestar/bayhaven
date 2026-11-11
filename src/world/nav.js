@@ -1,81 +1,133 @@
-// STAND-IN: replace with the nav contract in plan/bible/tech/contracts.md when streaming ships.
-// Day 1's four streets as a small lane graph: one lane each way, driving on the right,
-// 3.5 m off the centre line. No walking edges yet. No three.js in here.
-//   Heron Walk Drive (z = 37), Seagrape Street (z = -37), Plaza Street (x = -52), Coral Boulevard (x = 52)
+// The lane graph and the sidewalks, made from the map's road pieces (plan/bible/tech/algorithms.md
+// section 4). Driving is on the right. A lane stops short of each junction; `next` lists the lanes a
+// car may take from its end. Pure data, no three.js. Built once for the whole map (it is a few
+// thousand numbers) and indexed by chunk, so a lookup never loops over every lane.
+import { CHUNK } from './map.js';
 
-const OFFSET = 3.5, SPEED = 13.9, CHUNK = 160;
-const XS = [-90, -52, 52, 90], ZS = [-85, -37, 37];
-export const STREETS = [
-  { id: 'heron-walk-drive', name: 'Heron Walk Drive', kind: 'boulevard', z: 37 },
-  { id: 'seagrape-street', name: 'Seagrape Street', kind: 'street', z: -37 },
-  { id: 'plaza-street', name: 'Plaza Street', kind: 'street', x: -52 },
-  { id: 'coral-blvd', name: 'Coral Boulevard', kind: 'boulevard', x: 52 },
-];
 const angle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+// lane centre offsets from the road's centre line, innermost first (plan/bible/art/kits.md, "Lanes")
+const OFFSETS = { 1: [3.5], 2: [2.9, 6.7], 3: [3.8, 7.4, 11.0] };
 
-export function createNav() {
-  const lanes = [], byId = new Map(), nodes = new Map();
-  const node = (x, z) => {
-    const key = x + ',' + z;
-    if (!nodes.has(key)) nodes.set(key, { key, x, z, out: [] });
-    return nodes.get(key);
+export function createNav(map) {
+  const lanes = [], byId = new Map(), nodes = new Map(), laneBucket = new Map(), walks = [], walkBucket = new Map();
+  const ckey = (x, z) => { const c = map.chunkOf(x, z); return c.cx + c.cz * 64; };
+  const put = (bucket, x, z, item) => { const k = ckey(x, z); if (!bucket.has(k)) bucket.set(k, []); bucket.get(k).push(item); };
+  const node = (k) => {
+    if (!nodes.has(k)) { const m = map.nodes.get(k); nodes.set(k, { key: k, x: m.x, z: m.z, half: m.half, signal: m.signal, out: [], in: [], corners: {} }); }
+    return nodes.get(k);
   };
-  function lane(street, a, b) {
-    const dx = b.x - a.x, dz = b.z - a.z, len = Math.hypot(dx, dz), fx = dx / len, fz = dz / len;
-    const ox = -fz * OFFSET, oz = fx * OFFSET;        // to the right of the way it runs
-    const l = { id: `${street.id}:${a.key}>${b.key}`, roadId: street.id, name: street.name, kind: street.kind,
-      ax: a.x + ox, az: a.z + oz, bx: b.x + ox, bz: b.z + oz, len, heading: Math.atan2(fx, fz),
-      speed: SPEED, level: 0, next: [], signal: null, left: null, right: null, from: a, to: b };
-    lanes.push(l); byId.set(l.id, l); a.out.push(l);
+  const streets = [];
+  for (const zn of map.zones) for (const l of zn.roads.lines) streets.push({ id: l.id, name: l.name, kind: l.kind, [l.axis === 'ns' ? 'x' : 'z']: l.at });
+
+  for (const p of map.pieces) {
+    if (p.stub) continue;                          // a dead-end stub behind a barrier carries no traffic
+    const A = node(p.a), B = node(p.b);
+    for (const [from, to] of [[A, B], [B, A]]) {
+      const dx = to.x - from.x, dz = to.z - from.z, full = Math.hypot(dx, dz), fx = dx / full, fz = dz / full;
+      // stop width / 2 + 2 short of each junction centre (the crossing road's half width)
+      const cross = p.axis === 'ns' ? 'ew' : 'ns', ta = from.half[cross] + 2, tb = to.half[cross] + 2;
+      const signal = to.signal ? { id: to.key, axis: p.axis, offset: (Math.abs(to.x * 31 + to.z * 17) | 0) % 30 } : null;
+      OFFSETS[p.lanes].forEach((off, i) => {
+        const ox = -fz * off, oz = fx * off;       // to the right of the way it runs
+        const l = { id: `${p.roadId}:${from.key}>${to.key}${i ? '#' + i : ''}`, roadId: p.roadId, name: p.name, kind: p.kind, index: i, of: p.lanes,
+          ax: from.x + ox + fx * ta, az: from.z + oz + fz * ta, bx: to.x + ox - fx * tb, bz: to.z + oz - fz * tb,
+          len: full - ta - tb, heading: Math.atan2(fx, fz), speed: p.speed, level: 0, next: [], signal, left: null, right: null, from, to, piece: p };
+        lanes.push(l); byId.set(l.id, l); from.out.push(l); to.in.push(l);
+        put(laneBucket, (l.ax + l.bx) / 2, (l.az + l.bz) / 2, l);
+      });
+    }
+    // sidewalks: one walking edge each side, width / 2 + 1.5 from the centre line
+    for (const side of [-1, 1]) {
+      const off = side * (p.width / 2 + 1.5), nsP = p.axis === 'ns';
+      const w = { id: `${p.id}:${side > 0 ? 'r' : 'l'}`, kind: 'walk', roadId: p.roadId, ax: p.ax + (nsP ? off : A.half.ns + 1.5), az: p.az + (nsP ? A.half.ew + 1.5 : off),
+        bx: p.bx - (nsP ? -off : B.half.ns + 1.5), bz: p.bz - (nsP ? B.half.ew + 1.5 : -off), next: [], crossing: false };
+      w.len = Math.hypot(w.bx - w.ax, w.bz - w.az);
+      // which corner of each junction it ends on: 'ne', 'nw', 'se', 'sw' of the node
+      const corner = (n, end) => (nsP ? (end === 'a' ? 's' : 'n') + (side > 0 ? 'e' : 'w') : (side > 0 ? 's' : 'n') + (end === 'a' ? 'e' : 'w'));
+      for (const [n, end] of [[A, 'a'], [B, 'b']]) { const c = corner(n, end); (n.corners[c] ||= []).push(w); }
+      walks.push(w); put(walkBucket, (w.ax + w.bx) / 2, (w.az + w.bz) / 2, w);
+    }
   }
-  for (const s of STREETS) {
-    const along = s.z !== undefined ? XS.map((x) => node(x, s.z)) : ZS.map((z) => node(s.x, z));
-    for (let i = 0; i < along.length - 1; i++) { lane(s, along[i], along[i + 1]); lane(s, along[i + 1], along[i]); }
-  }
-  // where a lane leads: every lane leaving its end, but back the way it came only at a dead end
+  // where a lane leads: straight on from any lane, right from the outside lane, left from the
+  // inside lane; back the way it came only at a dead end
   for (const l of lanes) {
-    const on = l.to.out.filter((o) => o.to !== l.from);
-    l.next = (on.length ? on : l.to.out).map((o) => o.id);
+    const on = [];
+    for (const o of l.to.out) {
+      if (o.to === l.from) continue;
+      const turn = angle(o.heading - l.heading);
+      if (Math.abs(turn) < 0.3) { if (o.index === Math.min(l.index, o.of - 1)) on.push(o.id); }
+      else if (turn < 0) { if (l.index === l.of - 1 && o.index === o.of - 1) on.push(o.id); }        // right turn (heading falls)
+      else if (l.index === 0 && o.index === 0) on.push(o.id);                                         // left turn
+    }
+    if (!on.length) for (const o of l.to.out) if (o.to !== l.from && o.index === 0) on.push(o.id);
+    if (!on.length) for (const o of l.to.out) if (o.index === 0) on.push(o.id);
+    l.next = on;
+    const sib = l.from.out.filter((o) => o.to === l.to);
+    l.left = l.index > 0 ? sib[l.index - 1].id : null; l.right = l.index < l.of - 1 ? sib[l.index + 1].id : null;
+  }
+  // crossings: at a junction, the two corners either side of an arm are joined across it
+  for (const n of nodes.values()) {
+    const at = { ne: [n.half.ns + 1.5, -n.half.ew - 1.5], nw: [-n.half.ns - 1.5, -n.half.ew - 1.5], se: [n.half.ns + 1.5, n.half.ew + 1.5], sw: [-n.half.ns - 1.5, n.half.ew + 1.5] };
+    for (const [a, b] of [['nw', 'ne'], ['sw', 'se'], ['nw', 'sw'], ['ne', 'se']]) {
+      if (!n.corners[a] && !n.corners[b]) continue;
+      const w = { id: `x:${n.key}:${a}${b}`, kind: 'crossing', node: n.key, signal: n.signal, ax: n.x + at[a][0], az: n.z + at[a][1], bx: n.x + at[b][0], bz: n.z + at[b][1], next: [], crossing: true };
+      w.len = Math.hypot(w.bx - w.ax, w.bz - w.az);
+      (n.corners[a] ||= []).push(w); (n.corners[b] ||= []).push(w);
+      walks.push(w); put(walkBucket, (w.ax + w.bx) / 2, (w.az + w.bz) / 2, w);
+    }
+    for (const c in n.corners) for (const w of n.corners[c]) for (const o of n.corners[c]) if (o !== w) w.next.push(o);
   }
 
+  function nearIn(bucket, x, z, score) {
+    const c = map.chunkOf(x, z);
+    let best = null, bd = Infinity;
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+      const list = bucket.get(c.cx + i + (c.cz + j) * 64);
+      if (!list) continue;
+      for (const l of list) {
+        const dx = l.bx - l.ax, dz = l.bz - l.az;
+        const t = Math.max(0, Math.min(1, ((x - l.ax) * dx + (z - l.az) * dz) / (l.len * l.len)));
+        const d = Math.hypot(l.ax + dx * t - x, l.az + dz * t - z) + score(l);
+        if (d < bd) { bd = d; best = l; }
+      }
+    }
+    return best;
+  }
   function nearestNode(x, z) {
+    const l = nav.laneNear(x, z);
+    if (l) return Math.hypot(l.from.x - x, l.from.z - z) < Math.hypot(l.to.x - x, l.to.z - z) ? l.from : l.to;
     let best = null, bd = Infinity;
     for (const n of nodes.values()) { const d = Math.hypot(n.x - x, n.z - z); if (d < bd) { bd = d; best = n; } }
     return best;
   }
+
   const nav = {
-    lanes, streets: STREETS,
+    lanes, streets, walks, nodes, chunk: CHUNK,
     lane: (id) => byId.get(id) || null,
     // the lane nearest a point; give a heading to prefer lanes that run that way
-    laneNear(x, z, heading) {
-      let best = null, bd = Infinity;
-      for (const l of lanes) {
-        const dx = l.bx - l.ax, dz = l.bz - l.az;
-        const t = Math.max(0, Math.min(1, ((x - l.ax) * dx + (z - l.az) * dz) / (l.len * l.len)));
-        let d = Math.hypot(l.ax + dx * t - x, l.az + dz * t - z);
-        if (heading !== undefined && Math.abs(angle(l.heading - heading)) > Math.PI / 2) d += 20;
-        if (d < bd) { bd = d; best = l; }
-      }
-      return best;
-    },
+    laneNear: (x, z, heading) => nearIn(laneBucket, x, z, (l) => (heading !== undefined && Math.abs(angle(l.heading - heading)) > Math.PI / 2 ? 20 : 0)),
     next(l, r = Math.random) { return byId.get(l.next[Math.floor(r() * l.next.length)]) || null; },
-    lanesInChunk(cx, cz) {
-      return lanes.filter((l) => Math.floor((l.ax + l.bx) / 2 / CHUNK) === cx && Math.floor((l.az + l.bz) / 2 / CHUNK) === cz);
-    },
-    walkNear: () => null, walkNext: () => null, crossings: () => [],
-    // A line of points to drive from one place to another: along the right-hand lanes, pulled
-    // 9 m short of each junction so the corners come out round. opts.avoid is a list of road ids.
+    lanesInChunk: (cx, cz) => laneBucket.get(cx + cz * 64) || [],
+    // is a lane's light green? Two phases of 15 s, in step for everyone (clock seconds in)
+    green(l, seconds) { return !l.signal || (Math.floor((seconds + l.signal.offset) / 15) % 2 === 0) === (l.signal.axis === 'ns'); },
+    walkNear: (x, z) => nearIn(walkBucket, x, z, (w) => (w.crossing ? 3 : 0)),
+    walkNext(edge, r = Math.random) { return edge.next.length ? edge.next[Math.floor(r() * edge.next.length)] : null; },
+    crossings: (edge) => edge.next.filter((w) => w.crossing),
+    walksInChunk: (cx, cz) => walkBucket.get(cx + cz * 64) || [],
+    // A line of points to drive from one place to another, along the lanes (A* over junctions).
+    // opts.avoid is a list of road ids.
     route(from, to, opts = {}) {
       const avoid = opts.avoid || [];
       const start = nearestNode(from.x, from.z), goal = nearestNode(to.x, to.z);
-      const dist = new Map([[start, 0]]), came = new Map(), open = [start];
+      if (!start || !goal) return [{ x: to.x, z: to.z }];
+      const dist = new Map([[start, 0]]), came = new Map(), open = [start], h = (n) => Math.hypot(n.x - goal.x, n.z - goal.z);
       while (open.length) {
-        open.sort((a, b) => dist.get(a) + Math.hypot(a.x - goal.x, a.z - goal.z) - dist.get(b) - Math.hypot(b.x - goal.x, b.z - goal.z));
-        const n = open.shift();
+        let bi = 0; for (let i = 1; i < open.length; i++) if (dist.get(open[i]) + h(open[i]) < dist.get(open[bi]) + h(open[bi])) bi = i;
+        const n = open.splice(bi, 1)[0];
         if (n === goal) break;
         for (const l of n.out) {
-          if (avoid.includes(l.roadId)) continue;
-          const d = dist.get(n) + l.len;
+          if (l.index !== l.of - 1 || avoid.includes(l.roadId)) continue;       // one edge per piece: its outside lane
+          const d = dist.get(n) + l.len + 20;
           if (d < (dist.has(l.to) ? dist.get(l.to) : Infinity)) { dist.set(l.to, d); came.set(l.to, l); if (!open.includes(l.to)) open.push(l.to); }
         }
       }
@@ -83,11 +135,10 @@ export function createNav() {
       for (let n = goal; came.has(n); n = came.get(n).from) path.unshift(came.get(n));
       const out = [];
       for (const l of path) {
-        const fx = Math.sin(l.heading), fz = Math.cos(l.heading), cut = Math.min(9, l.len / 3);
-        const ax = l.ax + fx * cut, az = l.az + fz * cut;
+        const fx = Math.sin(l.heading), fz = Math.cos(l.heading);
         // a start part-way down the first lane: do not send the car back to the lane's beginning
-        if (l !== path[0] || (from.x - ax) * fx + (from.z - az) * fz < 0) out.push({ x: ax, z: az });
-        out.push({ x: l.bx - fx * cut, z: l.bz - fz * cut });
+        if (l !== path[0] || (from.x - l.ax) * fx + (from.z - l.az) * fz < 0) out.push({ x: l.ax, z: l.az });
+        out.push({ x: l.bx, z: l.bz });
       }
       out.push({ x: to.x, z: to.z });
       return out;

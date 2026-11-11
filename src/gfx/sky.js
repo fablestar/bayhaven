@@ -146,7 +146,7 @@ export function createSky(scene) {
     uHorizon: skyU.uHorizon, uSunDir: skyU.uSunDir, uSunCol: skyU.uSunCol,
     uTime: skyU.uTime, uNight: skyU.uNight,
   };
-  const seaGeo = new THREE.PlaneGeometry(3600, 1700);
+  const seaGeo = new THREE.PlaneGeometry(6800, 1700);
   seaGeo.rotateX(-Math.PI / 2);
   const sea = new THREE.Mesh(seaGeo,
     new THREE.ShaderMaterial({ uniforms: seaU, vertexShader: SEA_VERT, fragmentShader: SEA_FRAG, fog: false }));
@@ -194,6 +194,8 @@ export function createSky(scene) {
     sky.night = cur.night;
   }
 
-  const sky = { update, night: 0, sunDir };
+  // how far you can see: the streamer's ring edges hide inside this
+  const setFog = (near, far) => { scene.fog.near = near; scene.fog.far = far; };
+  const sky = { update, night: 0, sunDir, setFog };
   return sky;
 }
