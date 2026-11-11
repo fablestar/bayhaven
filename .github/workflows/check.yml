@@ -19,7 +19,11 @@ jobs:
       - run: npm ci
       - run: npm i --no-save playwright@1.65.0
       - run: PLAYWRIGHT_BROWSERS_PATH=.pw npx playwright install --with-deps chromium
-      - run: npm run check
+      # the newest session's checks, plus every earlier day's checks and the standing gates
+      - run: |
+          id=$(ls tools/checks/D*.mjs | xargs -n1 basename | sed 's/\.mjs$//' | sort -V | tail -1)
+          echo "checking up to $id"
+          npm run check -- --id "$id"
       - if: always()
         uses: actions/upload-artifact@v4
         with:
