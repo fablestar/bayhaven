@@ -105,6 +105,9 @@ void main() {
   float w1 = sin(vW.x * 0.33 + uTime * 1.1 + sin(vW.z * 0.21) * 1.5);
   float w2 = sin(vW.z * 0.47 - uTime * 1.4 + vW.x * 0.13);
   float w3 = sin(vW.x * 1.3 - vW.z * 0.9 + uTime * 2.0);
+  // far away the ripples are smaller than a pixel and turn into a grid pattern, so fade them out
+  float near = smoothstep(420.0, 40.0, dist);
+  w3 *= near * near; w1 *= 0.35 + 0.65 * near; w2 *= 0.35 + 0.65 * near;
   vec3 N = normalize(vec3(w1 * 0.05 + w3 * 0.03, 1.0, w2 * 0.07 + w3 * 0.03));
   float fres = pow(1.0 - max(dot(V, N), 0.0), 3.0);
   col = mix(col, uHorizon, fres * 0.65);

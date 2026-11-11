@@ -2,7 +2,8 @@
 
 import * as THREE from 'three';
 import { createInput } from './input.js';
-import { createEngineSound } from './audio.js';
+import { createAudio } from './audio.js';
+import { createGulls } from './gulls.js';
 import { createWorld } from './world.js';
 import { createCar } from './car.js';
 import { createSky } from './sky.js';
@@ -21,7 +22,8 @@ const world = createWorld(scene);
 const car = createCar(scene, world);
 Object.assign(car, world.spawn);
 
-const audio = createEngineSound();
+const gulls = createGulls(scene);
+const audio = createAudio();
 const hint = document.getElementById('hint');
 const clockEl = document.getElementById('clock');
 const kmhEl = document.getElementById('kmh');
@@ -100,7 +102,9 @@ function frame(now) {
   updateCamera(dt);
   sky.update(hour, time, camera);
   world.update(sky.night);
-  audio.update(Math.min(1, Math.abs(car.speed) / car.maxSpeed), Math.abs(input.throttle));
+  gulls.update(time, sky.night);
+  const seaNear = Math.max(0, Math.min(1, (car.z + 30) / 90));
+  audio.update(Math.min(1, Math.abs(car.speed) / car.maxSpeed), Math.abs(input.throttle), seaNear * Math.sqrt(seaNear));
   renderer.render(scene, camera);
 
   // HUD
