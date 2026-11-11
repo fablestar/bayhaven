@@ -53,6 +53,24 @@ function signAtlas() {
   t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
   return t;
 }
+// Speckled grain for asphalt, paving and sand. Mostly white, so it only darkens a little.
+function grainTexture() {
+  const size = 256, c = document.createElement('canvas');
+  c.width = c.height = size;
+  const g = c.getContext('2d'), img = g.createImageData(size, size), r = rng(77);
+  const coarse = new Float32Array(32 * 32).map(() => r());
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    let v = 222 + (coarse[(y >> 3) * 32 + (x >> 3)] - 0.5) * 22 + (r() - 0.5) * 44;
+    const speck = r();
+    if (speck > 0.992) v = 255; else if (speck < 0.01) v = 150;
+    const i = (y * size + x) * 4;
+    img.data[i] = img.data[i + 1] = img.data[i + 2] = Math.max(0, Math.min(255, v)); img.data[i + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return t;
+}
 function signUV(i) {
   const u0 = (i % 2) / 2, u1 = u0 + 0.5, v1 = 1 - Math.floor(i / 2) / 8, v0 = v1 - 1 / 8;
   return [u0, v0, u1, v0, u1, v1, u0, v1];
@@ -269,11 +287,11 @@ export function createWorld(scene) {
     solid(x - 0.3, x + 0.3, z - 0.3, z + 0.3);
   }
 
-  function lamp(x, z, dx, dz) {
+  function lamp(x, z, dx, dz, arm = 1.8) {
     const y = world.heightAt(x, z);
     B.box(x, y + 3.25, z, 0.18, 6.5, 0.18, 0x2b2838);
-    B.box(x + dx * 0.9, y + 6.45, z + dz * 0.9, Math.abs(dx) * 1.8 + 0.14, 0.12, Math.abs(dz) * 1.8 + 0.14, 0x2b2838, { bottom: true });
-    const hx = x + dx * 1.8, hz = z + dz * 1.8;
+    B.box(x + dx * arm / 2, y + 6.45, z + dz * arm / 2, Math.abs(dx) * arm + 0.14, 0.12, Math.abs(dz) * arm + 0.14, 0x2b2838, { bottom: true });
+    const hx = x + dx * arm, hz = z + dz * arm;
     N.box(hx, y + 6.32, hz, 0.55, 0.14, 0.55, 0xfff2cc, { bottom: true });
     glowPts.push(hx, y + 6.25, hz);
     pools.flat(hx - 9, hx + 9, hz - 9, hz + 9, 0.2, 0xffffff);
@@ -412,7 +430,8 @@ export function createWorld(scene) {
   for (const z of [-15, 15]) { lamp(60, z, -1, 0); lamp(-60, z, 1, 0); }
   // the promenade: a long row of palms with lamps between them
   for (let x = -295; x <= 295; x += 10) palm(x, 47.4, 7.5 + rnd() * 3, CURB);
-  for (let x = -110; x <= 110; x += 27.5) lamp(x + 5, 45, 0, -1);
+  // (lamps stand on the far side with long arms, so the posts stay out of the camera's face)
+  for (let x = -120; x <= 120; x += 30) lamp(x, 49.3, 0, -1, 3.7);
 
   // where today's map ends
   barrier(100, -37, false, 22, 'w'); barrier(-100, -37, false, 22, 'e');
@@ -449,7 +468,13 @@ export function createWorld(scene) {
 
   const lambert = new THREE.MeshLambertMaterial({ vertexColors: true });
   const add = (geo, mat, order = 0) => { const m = new THREE.Mesh(geo, mat); m.renderOrder = order; scene.add(m); return m; };
-  add(G.build(), lambert);
+  // the ground gets a fine grain texture laid out in world metres: flat colour gives no
+  // sense of speed, speckled asphalt rushing under the car does
+  const groundGeo = G.build();
+  const gp = groundGeo.attributes.position, guv = new Float32Array(gp.count * 2);
+  for (let i = 0; i < gp.count; i++) { guv[i * 2] = gp.getX(i) / 7; guv[i * 2 + 1] = gp.getZ(i) / 7; }
+  groundGeo.setAttribute('uv', new THREE.BufferAttribute(guv, 2));
+  add(groundGeo, new THREE.MeshLambertMaterial({ vertexColors: true, map: grainTexture() }));
   add(M.build(), new THREE.MeshLambertMaterial({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
   add(B.build(), lambert);
   add(P.build(), new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }));
