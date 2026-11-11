@@ -106,7 +106,7 @@ export default [
     id: 'D2-S1.3', name: 'Hits: sparks, shake, knocked-over props',
     async run(t) {
       const page = await t.open();
-      const r = await page.evaluate(() => {
+      const r = await page.evaluate(async () => {
         const G = window.__game, T = G.test;
         // into the building on the north side of the beachfront street
         T.teleport(-30, 40, Math.PI);
@@ -114,11 +114,6 @@ export default [
         let sparks = 0, shake = 0;
         for (let i = 0; i < 180; i++) { T.advance(1 / 60); G.fx.draw(G.camera, 0, 0); sparks = Math.max(sparks, G.fx.count('sparks')); shake = Math.max(shake, Math.abs(G.fx.shakeX) + Math.abs(G.fx.shakeY)); }
         const crash = T.count('vehicle:crash'), thumps = G.audio.stats.crashes;
-        // through a barrier section at the east end of the street
-        T.teleport(80, 34, Math.PI / 2);
-        T.input([{ t: 0, hold: ['gas'] }, { t: 3, hold: [] }]);
-        T.advance(3.5);
-        const barriers = G.props.count('barrier', 'down');
         // through the slalom cones
         T.teleport(-56, 37, Math.PI / 2);
         T.input([{ t: 0, hold: ['gas'] }, { t: 5, hold: [] }]);
@@ -126,15 +121,34 @@ export default [
         const cones = G.props.count('cone', 'down'), boardCones = G.drop.score.cones;
         T.advance(4);
         const moved = G.props.all.filter((p) => p.state === 2 && Math.hypot(p.x - p.home.x, p.z - p.home.z) > 0.5).length;
+        // Through a barrier section where the map really ends: the east end of Heron Walk Drive. The
+        // place comes from the map (its east bound), and the sections are the ones standing there
+        // once that chunk has streamed in (D2-S3 moved the edge from x = 100 to the end of Tideline).
+        const map = G.modules.map, road = map.nearestRoad(map.bounds.x1 - 30, 37);
+        if (G.modules.traffic && G.modules.traffic.clear) G.modules.traffic.clear(true);
+        await T.ensure(map.bounds.x1 - 20, road.z, 1);
+        const sections = G.props.all.filter((p) => p.kind === 'barrier' && p.x > map.bounds.x1 - 20 && Math.abs(p.z - road.z) < road.width / 2 + 6);
+        const edgeX = sections.length ? sections[0].x : NaN, target = sections.find((p) => p.z < road.z) || sections[0];
+        const downBefore = G.props.count('barrier', 'down');
+        if (target) {
+          T.teleport(target.x - 20, target.z, Math.PI / 2);
+          T.input([{ t: 0, hold: ['gas'] }, { t: 3, hold: [] }]);
+          T.advance(3.5);
+        }
+        const barriers = G.props.count('barrier', 'down') - downBefore, stoppedAt = T.player().x;
         T.reset();
         return { sparks, shake, crash, thumps, barriers, cones, boardCones, moved, standing: G.props.count(null, 'up'), all: G.props.all.length,
+          sections: sections.length, edgeX, boundX: map.bounds.x1, stoppedAt,
           kinds: Object.fromEntries(Object.entries(G.props.kinds).map(([k, v]) => [k, v.list.length])) };
       });
       t.expect(r.crash, '>=', 1, 'vehicle:crash fired on the wall hit');
       t.expect(r.sparks, '>', 0, 'sparks alive after the hit');
       t.expect(r.shake, '>', 0, 'camera shake after the hit (m)');
       t.expect(r.thumps, '>=', 1, 'impact thumps played');
+      t.expect(r.sections, '>=', 2, 'barrier sections standing across Heron Walk Drive at the east edge of the map');
+      t.expect(Math.abs(r.boundX - r.edgeX), '<=', 12, `the barrier (x ${r.edgeX}) stands at the map's edge (x ${r.boundX}), in metres apart`);
       t.expect(r.barriers, '>=', 1, 'barrier sections knocked over');
+      t.expect(r.stoppedAt, '<=', r.boundX + 0.01, 'the car is held at the map edge behind the barrier (x)');
       t.expect(r.cones, '>=', 3, 'cones knocked over');
       t.expect(r.boardCones, '==', r.cones, 'score board cone count matches');
       t.expect(r.moved, '>=', 3, 'props that came to rest away from where they stood');

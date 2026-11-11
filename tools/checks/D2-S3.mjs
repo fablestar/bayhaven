@@ -29,10 +29,25 @@ export default [
       }
       const lib = await import('../check-lib.mjs');
       await page.evaluate(() => window.__game.modules.chunks.resetStats());
+      const frame0 = await page.evaluate(() => window.__game.loop.frame);
       const d = await lib.driveRoute(page, 'beach-60'), cal = await lib.calibrate(page);
+      const frames = (await page.evaluate(() => window.__game.loop.frame)) - frame0;
       const st = await page.evaluate(() => window.__game.test.chunks());
       t.note(`streamer over the drive: ${st.built} chunks built, ${st.dropped} dropped, ${st.slices} frames did building work: p95 ${st.buildMsP95.toFixed(2)} ms, longest ${st.buildMsMax.toFixed(2)} ms, longest single piece ${st.maxStepMs.toFixed(2)} ms`);
-      t.expect(st.built, '>=', 9, 'chunks built in slices during the drive');
+      // How many chunks get built while the car is still moving depends on the machine twice over:
+      // the streamer works once a frame, inside a budget in real milliseconds. So that count is a
+      // time budget, and is made fair like one (test-harness.md section 6): the 9 of the reference
+      // laptop (3,600 frames in the 60 s, k = 1) is scaled by the frames this machine drew and by k.
+      // The count that does not depend on the machine is per distance: for the metres driven, the
+      // streamer must end up having built its 9 chunks and owe nothing, however long that takes.
+      const share = Math.min(1, frames / (d.seconds * 60)) / cal.k, wantMoving = Math.max(1, Math.ceil(9 * share));
+      t.note(`fair count: ${frames} frames over ${d.seconds.toFixed(0)} game seconds (${(100 * Math.min(1, frames / (d.seconds * 60))).toFixed(0)}% of 60 a second), k ${cal.k.toFixed(2)}: ${wantMoving} of 9 chunks wanted while moving`);
+      t.expect(st.built, '>=', wantMoving, 'chunks built in slices while the car was moving (9 on the reference machine, scaled by frames drawn and k)');
+      t.expect(st.slices, '>', st.built, 'frames that did building work, against chunks built (a chunk is built over several frames)');
+      const left = await settle(page, 60);
+      const after = await page.evaluate(() => window.__game.test.chunks());
+      t.expect(left, '==', 0, 'chunks still owed once the streamer has caught up with the parked car');
+      t.expect(after.built, '>=', 9, `chunks built for the ${Math.round(d.metres)} m driven, counted once the streamer has caught up`);
       t.note(`with drawing (no graphics card here, so the drawing threads take the processor): slices p95 ${st.buildMsP95.toFixed(2)} ms`);
       t.expect(st.buildMsP95, '<=', 4 * cal.kHitch, 'p95 of the frames that did chunk building, with drawing (ms, times single-frame k)');
       // the same drive with no drawing: the player is moved along the beach and the streamer and the
@@ -48,11 +63,17 @@ export default [
           if (i % 15 === 0) { const end = performance.now() + 4; while (performance.now() < end); }      // let the streamer's 250 ms timer run
         }
         all.sort((x, y) => x - y);
-        const s = c.stats();
-        return { step: worst, slices: all.length, p95: all[Math.floor(all.length * 0.95)] || 0, max: all[all.length - 1] || 0, piece: s.maxStepMs, at: s.maxStepAt, built: s.built, x: p.x };
+        const s = c.stats(), moving = s.built, x0 = -1400;
+        // the car has stopped: let the streamer finish what the drive asked of it (not timed)
+        for (let i = 0; i < 6000 && c.pending > 0; i++) { c.update(g.camera); if (i % 15 === 0) { const end = performance.now() + 4; while (performance.now() < end); } }
+        return { step: worst, slices: all.length, p95: all[Math.floor(all.length * 0.95)] || 0, max: all[all.length - 1] || 0, piece: s.maxStepMs, at: s.maxStepAt, built: moving, x: p.x,
+          total: c.stats().built, owed: c.pending, metres: p.x - x0 };
       });
       t.note(`no drawing: ${dry.built} chunks built in ${dry.slices} slices, p95 ${dry.p95.toFixed(2)} ms, longest ${dry.max.toFixed(2)} ms, longest single piece ${dry.piece.toFixed(2)} ms (${dry.at}); longest simulation step ${dry.step.toFixed(2)} ms; car reached x ${Math.round(dry.x)}`);
-      t.expect(dry.built, '>=', 9, 'chunks built during the drive with no drawing');
+      // with no drawing every step gets its turn at the streamer, so only k scales the moving count
+      t.expect(dry.built, '>=', Math.max(1, Math.ceil(9 / cal.k)), 'chunks built while the car was moving, no drawing (9 on the reference machine, divided by k)');
+      t.expect(dry.owed, '==', 0, 'chunks still owed after the streamer caught up, no drawing');
+      t.expect(dry.total, '>=', 9, `chunks built for the ${Math.round(dry.metres)} m driven with no drawing, counted once the streamer has caught up`);
       t.expect(dry.p95, '<=', 4 * cal.k, 'G4: chunk building p95 over the frames that built, no drawing (ms, times k)');
       t.expect(dry.step, '<=', 12 * cal.k, 'G4: longest simulation step over the drive, no drawing (ms, times k)');
       t.note(`drive: ${Math.round(d.metres)} m in ${d.seconds.toFixed(0)} s, ${d.chunksCrossed} chunks crossed, chunkMs p95 ${d.chunkMsP95.toFixed(2)}, sim max ${d.simMax.toFixed(2)} ms, wall hits ${d.crashes}; k ${cal.k.toFixed(2)}, single-frame k ${cal.kHitch.toFixed(2)}`);

@@ -116,20 +116,40 @@ export default [
     },
   },
   {
-    id: 'D2-S2.4', name: 'Map and lane-graph stand-ins',
+    id: 'D2-S2.4', name: 'Map and lane graph',
+    // The promises of the old stand-ins, asked of the real road network (D2-S3): one lane each way
+    // per lane the map gives a road piece, keep right, every lane leads on, a T-junction offers two
+    // ways, nobody is sent back the way they came unless the road truly ends, and a sane route.
     async run(t) {
       const r = await t.eval(() => {
         const { map, nav } = window.__game.modules;
         const east = nav.laneNear(0, 40, Math.PI / 2), west = nav.laneNear(0, 34, -Math.PI / 2);
-        const route = [{ x: -24, z: 40.5 }, ...nav.route({ x: -24, z: 40.5 }, { x: 52, z: -37 })];
+        const from = { x: -24, z: 40.5 }, to = { x: 52, z: -37 };
+        const route = [from, ...nav.route(from, to)];
         let len = 0; for (let i = 1; i < route.length; i++) len += Math.hypot(route[i].x - route[i - 1].x, route[i].z - route[i - 1].z);
-        const dead = nav.lanes.find((l) => l.to.out.length === 1);
+        // counted from the map itself, not from nav
+        const open = map.pieces.filter((p) => !p.stub), stubs = map.pieces.filter((p) => p.stub);
+        const wantLanes = open.reduce((n, p) => n + 2 * p.lanes, 0);
+        const nodes = [...nav.nodes.values()], arms = (n) => new Set(n.out.map((o) => o.to.key)).size;
+        // lanes whose way on includes going back where they came from, and those with no other choice
+        const back = nav.lanes.filter((l) => l.next.some((id) => nav.lane(id).to === l.from));
+        const noChoice = nav.lanes.filter((l) => l.to.out.every((o) => o.to === l.from));
+        // junctions that touch a barrier stub at the map's edge: their lanes must still lead somewhere
+        const edge = nodes.filter((n) => stubs.some((s) => s.a === n.key || s.b === n.key));
+        // one-lane roads meeting at a T: a lane coming in has exactly the two other arms to choose from
+        const tee = nodes.filter((n) => arms(n) === 3 && n.in.every((l) => l.of === 1) && n.out.every((l) => l.of === 1));
+        const pairs = nav.lanes.filter((l) => l.of === 1).length;
         return {
           district: map.districtAt(0, 0), far: map.districtAt(5000, 0), land: map.isLand(0, 37), sea: map.isLand(0, 120),
           road: map.heightAt(0, 37), walk: map.heightAt(0, 46), surf: [map.surfaceAt(0, 37), map.surfaceAt(0, 60), map.surfaceAt(0, 120)].join(),
-          depth: map.depthAt(0, 100), lanes: nav.lanes.length, eastZ: east.az, eastName: east.name, eastH: east.heading, westZ: west.az,
-          next: east.next.length, nextOk: nav.lanes.every((l) => l.next.length > 0 && l.next.every((id) => nav.lane(id))), deadTurns: nav.lane(dead.next[0]).to === dead.from,
-          routeLen: len, routeEnd: route[route.length - 1], viaMap: window.__game.modules.map.nearestRoad(0, 30).roadId, state: window.__game.state.world.district,
+          depth: map.depthAt(0, 100), lanes: nav.lanes.length, wantLanes, pieces: open.length, stubs: stubs.length, onStub: nav.lanes.filter((l) => l.piece && l.piece.stub).length,
+          eastZ: east.az, eastName: east.name, eastH: east.heading, westZ: west.az, centreZ: map.nearestRoad(0, 37).z,
+          next: east.next.length, nextOk: nav.lanes.every((l) => l.next.length > 0 && l.next.every((id) => nav.lane(id))),
+          tees: tee.length, teeOk: tee.every((n) => n.in.every((l) => l.next.length === 2 && l.next.every((id) => nav.lane(id).to !== l.from))),
+          back: back.length, noChoice: noChoice.length, backOk: back.every((l) => noChoice.includes(l)), noChoiceOk: noChoice.every((l) => back.includes(l)),
+          edge: edge.length, edgeOk: edge.every((n) => n.in.length > 0 && n.in.every((l) => l.next.length > 0)), pairs,
+          routeLen: len, routeEnd: route[route.length - 1], blocks: Math.abs(to.x - from.x) + Math.abs(to.z - from.z),
+          viaMap: window.__game.modules.map.nearestRoad(0, 30).roadId, state: window.__game.state.world.district,
         };
       });
       t.expect(r.district, '==', 'tideline', 'districtAt(0, 0)');
@@ -139,12 +159,20 @@ export default [
       t.expect(r.walk, 'between', [0.1, 0.2], 'heightAt on the promenade kerb (m)');
       t.expect(r.surf, '==', 'road,sand,water', 'surfaceAt street, beach, sea');
       t.expect(r.depth, '>', 0.5, 'depthAt 20 m out to sea (m)');
-      t.expect(r.lanes, '==', 20, 'lanes: 10 street pieces, one lane each way');
-      t.expect(r.eastZ === 40.5 && r.westZ === 33.5, '==', true, 'traffic keeps right: eastbound lane on the sea side of Heron Walk Drive');
+      t.expect(r.pieces, '>=', 300, 'road pieces that carry traffic (all of Tideline)');
+      t.expect(r.lanes, '==', r.wantLanes, `lanes: every one of the ${r.pieces} road pieces gives its lane count each way`);
+      t.expect(r.onStub, '==', 0, `lanes laid on the ${r.stubs} stubs behind the barriers`);
+      t.expect(r.eastZ > r.centreZ && r.westZ < r.centreZ && r.eastZ - r.centreZ === r.centreZ - r.westZ, '==', true,
+        `traffic keeps right: the eastbound lane (z ${r.eastZ}) on the sea side of Heron Walk Drive's centre (z ${r.centreZ}), the westbound (z ${r.westZ}) as far the other side`);
       t.expect(r.eastName, '==', 'Heron Walk Drive', 'the beachfront street\'s name');
-      t.expect(r.nextOk && r.next === 2, '==', true, 'every lane leads somewhere; a T-junction offers two ways on');
-      t.expect(r.deadTurns, '==', true, 'a dead end turns back');
-      t.expect(r.routeLen, 'between', [140, 160], 'route from the spawn round the corner to the far end of the block (m; 150 along the street centres)');
+      t.expect(r.nextOk && r.next === 2, '==', true, 'every lane leads somewhere; the beachfront lane at the block\'s T-junction offers two ways on');
+      t.expect(r.tees, '>=', 10, 'T-junctions of one-lane streets in the network');
+      t.expect(r.teeOk, '==', true, 'at every such T-junction each lane coming in offers exactly two ways on, neither of them back');
+      t.expect(r.backOk && r.noChoiceOk, '==', true, `a lane turns back only where the road truly ends, and always does there (${r.back} turn back, ${r.noChoice} dead ends)`);
+      t.expect(r.edge, '>=', 40, 'junctions at the map edge, next to a barrier');
+      t.expect(r.edgeOk, '==', true, 'every lane into a junction at the map edge leads on (nobody is routed into a barrier)');
+      t.expect(r.routeLen, 'between', [r.blocks, r.blocks * 1.3], `route from the spawn round the corner to the far end of the block (m; ${r.blocks} along the grid)`);
+      t.expect(Math.hypot(r.routeEnd.x - 52, r.routeEnd.z + 37), '<=', 1, 'the route ends where it was asked to (m off)');
       t.expect(r.viaMap, '==', 'heron-walk-drive', 'map.nearestRoad');
       t.expect(r.state, '==', 'tideline', 'state.world.district');
     },
