@@ -2,6 +2,10 @@
 
 Built from the notes in `changelog/` by `tools/changelog.mjs`. Newest day first.
 
+## Day 4: Downtown (day 4 headline)
+
+### D4-S1 · Downtown (day 4 headline)
+
 ## Day 3: On foot (Teo gets out of the car)
 
 ### D3-S1 · On foot (Teo gets out of the car)
@@ -99,6 +103,34 @@ Also: `test.ride()`, `test.traffic.mix()`, `test.traffic.models()`, `test.carthe
 - **Two-tone paint by rule**: the Flounder's roof and skirts are cream on every paint, not "a second factory colour".
 - **Traffic lights and indicators**: traffic cars show indicators only while signalling (lit); unlit ones are not drawn, to save instances.
 - The Wahoo, Needlefish, Birdie and Flounder are in no built district's moving mix (their districts have no zone file yet). They are reachable as parked cars (not the Birdie) and through the test API.
+- No art requests were made.
+
+### D3-S4 · HUD and controls (the stream overlay, the wordmark, a pause menu, touch layouts)
+
+**Shipped**
+
+1. **The HUD is one canvas** (`src/ui/hud.mod.js`, `hud-layout.js`, `hud-draw.js`). `#hud` sits over the game canvas at CSS size × `min(devicePixelRatio, 2)` and lets touches through. Fourteen pieces, each with its own rectangle: cash pill (mango chip with a `$`), followers pill (`212`, `12.8K`, `1.25M`), clock pill, LIVE pill (pink, from heat 3, with the viewer count and a blinking dot), five siren lights (pink and cyan, swapping every 400 ms, every 200 ms from heat 3), speed with the vehicle's name (`86 km/h · Heron`, hidden on foot), the day badge (`Bayhaven · Day 3 build`), the drop's line, the drift score, prompt, hint, toasts, a spoken line, and the luggage tag. Places are held for the minimap and the radio pill; nothing is drawn in them.
+   A piece is wiped and repainted only when its value changes or while it moves, and may paint only inside its own wiped box. In two idle seconds at most 2 pieces are repainted (the check's limit; frames keep being drawn).
+2. **Three placements**: desktop, a phone held sideways with touch, and a phone held upright. Sizes slide between the bible's phone and 1920×1080 numbers. Safe-area insets are added to every edge.
+3. **The wordmark** (`wordmark.js`): "Bayhaven" from straight strokes and circle arcs, one stroke weight, slanted forward, the `y`'s tail running on as a wave under the rest of the word; pink over a cyan offset copy. No font. `modules.hud.wordmark(height)` hands out the canvas. It heads the pause card.
+4. **Prompts, hints, toasts** on `ui:prompt`, `ui:hint`, `ui:hint:done`, `ui:toast` (and `modules.ui.*`, the contract's API). A hint shows once per id and fades when its thing is done or after 8 s. Toasts: three at once on a desktop, one on a phone; they wait while the tag is down. `ui:toast { kind: 'subtitle' }` is drawn as a spoken line with the speaker's initial on a mango square, and hides the hint and prompt. `coach.mod.js` gives the first driving and walking hints and raises `F  Get in` beside a car.
+5. **The luggage tag** on `district:entered`: sand tag with cut corners, a band in the district's colour, "Now entering", the district, the neighbourhood. Drops in 350 ms, swings by `14° × e^(-2.2t) × cos(6.9t)`, leaves upwards at 3 s.
+6. **Pause menu** (`menus.mod.js`, page elements): Esc or the touch Pause button. Resume, Settings, Controls, Save. Settings: quality (auto, low, medium, high), master, music and effects volume, reduce motion, sprint as hold or tap-to-toggle. Controls lists what works today, for keys or touch. Time stops, the street blurs, arrow keys and Enter work. `menus.register()` lets other lanes add pages.
+7. **Touch** (`touch.mod.js`): driving, on-foot and menu layouts, sideways and upright, at the bible's places: gas 84, brake 72, steer 72 beside the minimap, the rest 64. A Pause button, and Camera on foot. On foot the stick appears under the thumb anywhere in the lower left. Everything uses the safe-area insets.
+8. **If you finish early, both**: `hud.clipMode(true)` hides hints, prompts, toasts and touch buttons and keeps the badge. Cash digits roll for 600 ms with a mint ring on a gain and a pink ring and shake on a loss; followers get a cyan ring on a jump of 50 and a pop when a thousand is crossed; a new siren light pops; LIVE drops in.
+
+**Not shipped**
+
+- **Volumes do nothing yet.** The sliders write `state.settings` and emit `settings:changed`, but sound lives in `src/audio`, which I do not own, and it does not listen. There is no voice-blip slider (the prompt asked for three volumes).
+- **Reduce motion** is honoured by the HUD only (no swing, shake, pop or blink). The camera's shake and speed zoom belong to another lane.
+- **Sprint toggle** works on the keyboard (Shift). Touch Sprint is still a hold; there is no aim to toggle yet.
+- **No minimap, radio pill, chat, health bar, objective, timer or quick bar**: not in this prompt. Their sessions draw into `hud.layout()`'s rectangles.
+- **`ui.card(spec)`** (postcard, wristband, mugshot board) is not built.
+- **The weekday** on the clock: state has none, so the pill shows the time only.
+- **The `+$500` that rises from the cash pill** and the level name under the siren lights are not drawn.
+- **The speaker's face** in a spoken line is their initial.
+- Pause has no Map, Phone or Quit to title rows: those screens do not exist.
+- **Phone and switch-lead touch buttons** exist but are hidden (`touch.enable(id, true)`), since neither feature exists.
 - No art requests were made.
 
 ## Day 2: Drift (day 2 headline)

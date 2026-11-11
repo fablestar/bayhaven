@@ -8,11 +8,17 @@ const SIGNS = [
   ['MANGO MOON', '#ffd23e'], ['CORAL ARCADE', '#b98bff'], ['BAYHAVEN GRAND', '#fff0c0'], ['DINER · 24H', '#ff5a5a'],
   ['MORE CITY SOON', '#ffb020'], ['SURF & VINYL', '#5dff9b'], ['HOTEL ALBA', '#7fd6ff'], ['LOW TIDE BAR', '#ff8f5a'],
   ['SHELL YEAH', '#5dff9b'], ['STORM MART', '#ffa02e'], ['SECOND WIND THRIFT', '#b98bff'], ['BIRDBATH CAR WASH', '#29e6ff'],
+  // day 4, downtown: 16 and 17 stack into the Bayhaven Tomorrow billboard
+  ['BAYHAVEN TOMORROW', '#29e6ff'], ['NOW LEASING THE SKY', '#ff4fa8'], ['MERIDIAN SPIRE', '#fff0c0'], ['CITY HALL', '#ffd23e'],
+  ['FIRST BAYHAVEN SAVINGS', '#ff8f7a'], ['IGUANA INSURANCE', '#5dff9b'], ['MAISON SABLE', '#fff0c0'], ['BAY CAB', '#ffd23e'],
 ];
-// the cells shop fronts may use (0 is the roof sign, 8 the map-edge board), and a cell's UVs
+const ROWS = SIGNS.length / 2;
+// the cells shop fronts may use (0 is the roof sign, 8 the map-edge board), and a cell's UVs.
+// The sheet is 1024 wide and 128 px a row: 12 rows since day 4.
+export const TOWER_SIGNS = [20, 21, 22, 23, 6, 10];
 export const SHOP_SIGNS = [1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15];
 export function signUV(i) {
-  const u0 = (i % 2) / 2 + 0.0005, u1 = u0 + 0.499, v1 = 1 - Math.floor(i / 2) / 8 - 0.0005, v0 = v1 - 1 / 8 + 0.001;
+  const u0 = (i % 2) / 2 + 0.0005, u1 = u0 + 0.499, v1 = 1 - Math.floor(i / 2) / ROWS - 0.0005, v0 = v1 - 1 / ROWS + 0.001;
   return [u0, v0, u1, v0, u1, v1, u0, v1];
 }
 let signTex = null;
@@ -21,9 +27,9 @@ let signTex = null;
 export function signAtlas() {
   if (signTex) return signTex;
   const c = document.createElement('canvas');
-  c.width = 1024; c.height = 1024;
+  c.width = 1024; c.height = ROWS * 128;
   const g = c.getContext('2d');
-  g.fillStyle = '#0d0820'; g.fillRect(0, 0, 1024, 1024);
+  g.fillStyle = '#0d0820'; g.fillRect(0, 0, 1024, c.height);
   g.textAlign = 'center'; g.textBaseline = 'middle';
   SIGNS.forEach(([text, color], i) => {
     const x = (i % 2) * 512, y = Math.floor(i / 2) * 128;

@@ -10,7 +10,7 @@ import { MeshBuilder } from '../gfx/builder.js';
 import { chunkMaterials } from '../gfx/materials.js';
 import { rng } from '../core/rng.js';
 
-const LETTERS = ['G', 'M', 'B', 'N', 'S', 'L'];
+const LETTERS = ['G', 'M', 'B', 'W', 'N', 'S', 'L'];        // W: walls with the window-grid texture (tower districts only)
 const key = (cx, cz) => cx + cz * 64;
 const now = () => performance.now();
 
@@ -20,7 +20,7 @@ export function createChunks({ scene, map, collide, props, decor, quality, event
   const building = new Map();        // key -> job, LOD0 chunks queued or part-built
   const groups = new Map();          // group key -> { gx, gz, mesh, sig, tris, queued }
   const sets = [];                   // builder sets, used again and again (the pool)
-  const shellB = new MeshBuilder({ size: 8192 });
+  const shellB = new MeshBuilder({ size: 8192 }), shellW = new MeshBuilder({ uv: true, size: 8192 });
   let queue = [], current = null, ringAt = 0, lastX = null, lastZ = null, litWas = null;
   const centre = { cx: -99, cz: -99 };
   const slices = new Float32Array(1024); let sliceAt = 0;      // the last 1,024 frames that did building work
@@ -28,7 +28,7 @@ export function createChunks({ scene, map, collide, props, decor, quality, event
 
   const takeSet = () => {
     const s = sets.pop() || { G: new MeshBuilder({ size: 512 }), M: new MeshBuilder({ size: 2048 }), B: new MeshBuilder({ size: 16384 }),
-      N: new MeshBuilder({ size: 2048 }), S: new MeshBuilder({ uv: true, size: 256 }), L: new MeshBuilder({ size: 2048 }) };
+      N: new MeshBuilder({ size: 2048 }), S: new MeshBuilder({ uv: true, size: 256 }), L: new MeshBuilder({ size: 2048 }), W: new MeshBuilder({ uv: true, size: 1024 }) };
     for (const l of LETTERS) s[l].reset();
     return s;
   };
@@ -106,20 +106,25 @@ export function createChunks({ scene, map, collide, props, decor, quality, event
     }
     return out;
   }
+  function dropGroup(g) {
+    for (const slot of ['mesh', 'meshW']) if (g[slot]) { scene.remove(g[slot]); g[slot].geometry.dispose(); g[slot] = null; }
+  }
   function buildGroup(job) {
-    if (!job.begun) { job.begun = true; job.list = members(job.gx, job.gz, quality.get('lod1Radius')); job.i = 0; shellB.reset(); }
+    if (!job.begun) { job.begun = true; job.list = members(job.gx, job.gz, quality.get('lod1Radius')); job.i = 0; shellB.reset(); shellW.reset(); }
     if (job.i < job.list.length) {
       const k = job.list[job.i++], cx = k % 64, cz = Math.floor(k / 64), rect = map.chunkRect(cx, cz), gen = generatorFor(rect);
-      if (gen && gen.shell) gen.shell({ B: shellB }, { cx, cz, rect }, map, heroes);
+      if (gen && gen.shell) gen.shell({ B: shellB, W: shellW }, { cx, cz, rect }, map, heroes);
       return false;
     }
     const gk = job.gx + job.gz * 16, g = groups.get(gk) || { gx: job.gx, gz: job.gz, mesh: null };
-    if (g.mesh) { scene.remove(g.mesh); g.mesh.geometry.dispose(); g.mesh = null; }
-    if (shellB.count) {
-      g.mesh = new THREE.Mesh(shellB.build({ free: true }), mats.B);
-      g.mesh.matrixAutoUpdate = false; scene.add(g.mesh);
+    dropGroup(g);
+    // one mesh a group; a group that has towers is drawn with the window-wall material (two meshes only where districts meet)
+    for (const [b, mat, slot] of [[shellB, mats.B, 'mesh'], [shellW, mats.W, 'meshW']]) {
+      if (!b.count) continue;
+      g[slot] = new THREE.Mesh(b.build({ free: true }), mat);
+      g[slot].matrixAutoUpdate = false; scene.add(g[slot]);
     }
-    g.tris = shellB.triangles; g.sig = job.list.join(); g.has = new Set(job.list); g.queued = false;
+    g.tris = shellB.triangles + shellW.triangles; g.sig = job.list.join(); g.has = new Set(job.list); g.queued = false;
     groups.set(gk, g); stat.groupsBuilt++;
     for (const k of job.list) events.emit('chunk:loaded', { cx: k % 64, cz: Math.floor(k / 64), lod: 1 });
     return true;
@@ -150,7 +155,7 @@ export function createChunks({ scene, map, collide, props, decor, quality, event
     }
     for (const [gk, g] of groups) {
       if (g.gx >= g0x && g.gx <= g1x && g.gz >= g0z && g.gz <= g1z) continue;
-      if (g.mesh) { scene.remove(g.mesh); g.mesh.geometry.dispose(); }
+      dropGroup(g);
       for (const k of g.has || []) events.emit('chunk:unloaded', { cx: k % 64, cz: Math.floor(k / 64), lod: 1 });
       groups.delete(gk);
     }
@@ -223,7 +228,7 @@ export function createChunks({ scene, map, collide, props, decor, quality, event
     stats() {
       let tris = 0, max = 0, n = 0, shell = 0, shellMax = 0, gn = 0;
       for (const ch of loaded.values()) if (ch.tris) { tris += ch.tris; max = Math.max(max, ch.tris); n++; }
-      for (const g of groups.values()) if (g.mesh) { shell += g.tris; gn++; shellMax = Math.max(shellMax, g.tris / Math.max(1, g.has.size)); }
+      for (const g of groups.values()) if (g.mesh || g.meshW) { shell += g.tris; gn++; shellMax = Math.max(shellMax, g.tris / Math.max(1, g.has.size)); }
       const used = Array.from(slices.subarray(0, Math.min(sliceAt, slices.length))).sort((a, b) => a - b);
       return { buildMsP95: used.length ? used[Math.floor(used.length * 0.95)] : 0, lod0: loaded.size, lod0Built: n, lod0TrisAvg: n ? Math.round(tris / n) : 0, lod0TrisMax: max, groups: gn, shellTris: shell, shellTrisPerChunkMax: Math.round(shellMax),
         pending: chunks.pending, colliders: collide.count, ...stat };
@@ -233,7 +238,7 @@ export function createChunks({ scene, map, collide, props, decor, quality, event
     reset() {
       for (const ch of [...loaded.values()]) drop(ch);
       for (const j of [...building.values()]) cancel(j);
-      for (const g of groups.values()) if (g.mesh) { scene.remove(g.mesh); g.mesh.geometry.dispose(); }
+      for (const g of groups.values()) dropGroup(g);
       groups.clear(); queue = []; current = null; ringAt = 0;
     },
   };

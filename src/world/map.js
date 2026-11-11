@@ -37,9 +37,10 @@ export function createMap() {
         const a = cuts[i], b = cuts[i + 1], mid = (a + b) / 2;
         if (line.closed.some(([c0, c1]) => mid > c0 && mid < c1)) continue;
         const width = widthAt(line, mid), nsLine = line.axis === 'ns';
-        const p = { id: line.id + ':' + i, roadId: line.id, name: line.name, kind: line.kind, axis: line.axis, zone: zone.id,
+        const part = (line.parts && line.parts.find((q) => mid >= q.from && mid <= q.to)) || line;      // a line may change its name on the way
+        const p = { id: (line.pid || line.id) + ':' + i, roadId: part.id || line.id, name: part.name, kind: part.kind, axis: line.axis, zone: zone.id,
           ax: nsLine ? line.at : a, az: nsLine ? a : line.at, bx: nsLine ? line.at : b, bz: nsLine ? b : line.at,
-          width, lanes: width >= 30 ? 3 : width >= 22 ? 2 : 1, speed: ROAD[line.kind].speed, level: 0,
+          width, lanes: width >= 30 ? 3 : width >= 22 ? 2 : 1, speed: ROAD[part.kind].speed, level: 0,
           a: isNode(a) ? (nsLine ? line.at + ',' + a : a + ',' + line.at) : null, b: isNode(b) ? (nsLine ? line.at + ',' + b : b + ',' + line.at) : null };
         p.len = b - a; p.stub = !p.a || !p.b;
         pieces.push(p); put(roadBucket, (p.ax + p.bx) / 2, (p.az + p.bz) / 2, p);
@@ -58,11 +59,22 @@ export function createMap() {
         const x0 = west ? west.at + widthAt(west, mid) / 2 : zone.bounds.x0, x1 = east ? east.at - widthAt(east, mid) / 2 : zone.bounds.x1;
         const b = { id: `${zone.id}:${ci}:${row.id}`, zone, row, ci, ri, x0, x1, z0: row.z0, z1: row.z1, seed: hash2(zone.seed, ci, ri), edge: !west || !east };
         blocks.push(b); put(blockBucket, (x0 + x1) / 2, mid, b);
-        splitBlock(zone, b);
+        if (zone.split) zone.split(b, addLot, { rng, hash2, overlap }); else splitBlock(zone, b);
       }
     });
     for (const h of zone.hero) addLot({ ...h, id: `${zone.id}:${h.key || h.id}`, zone: zone.id, hero: h.id, recipe: 'hero', body: h, wall: h.body || 0xfdf6ea, seed: hash2(zone.seed, h.x0 | 0, 7), sides: { n: true, s: true, e: true, w: true } });
     for (const r of zone.reserved) addLot({ ...r, id: `${zone.id}:${r.id}`, zone: zone.id, reserved: r.id, recipe: 'reserved', body: null, h: 0, seed: 0, sides: {} });
+  }
+  // where a road of one district ends on the road of the next, the two dead ends become one joint
+  const ends = new Map();
+  for (const p of pieces) for (const [end, x, z] of [['a', p.ax, p.az], ['b', p.bx, p.bz]]) {
+    if (p[end]) continue;
+    const k = x + ',' + z, other = ends.get(k);
+    if (!other) { ends.set(k, [p, end]); continue; }
+    if (other[0].zone === p.zone || other[0].axis !== p.axis) continue;
+    nodes.set(k, { key: k, x, z, pieces: [other[0], p], signal: false, half: { ns: 0, ew: 0 }, seam: true });
+    other[0][other[1]] = k; p[end] = k;
+    other[0].stub = !other[0].a || !other[0].b; p.stub = !p.a || !p.b;
   }
   for (const n of nodes.values()) {       // traffic lights where two big roads meet
     const kinds = new Set(n.pieces.map((p) => p.axis + (p.kind === 'street' ? '' : '!')));
@@ -143,7 +155,7 @@ export function createMap() {
 
   const map = {
     chunk: CHUNK, world: WORLD, zones, pieces, nodes, blocks, lots, snapFailures: [],
-    bounds: { x0: -1593, x1: 1593, z0: -314, z1: 84.5 },       // where the player can go today: all of Tideline
+    bounds: { x0: -1593, x1: 1593, z0: zones.reduce((m, z) => Math.min(m, z.bounds.z0), -320) + 6, z1: 84.5 },       // where the player can go today
     spawn: { x: -24, z: 40.5, h: Math.PI / 2 },
     chunkOf: (x, z) => ({ cx: chunkX(x), cz: chunkZ(z) }),
     chunkRect: (cx, cz) => ({ x0: WORLD.x0 + cx * CHUNK, x1: WORLD.x0 + (cx + 1) * CHUNK, z0: WORLD.z0 + cz * CHUNK, z1: WORLD.z0 + (cz + 1) * CHUNK }),
@@ -152,7 +164,7 @@ export function createMap() {
     zone: (id) => zones.find((z) => z.id === id) || null,
     zoneAt,
     districtAt: (x, z) => { const zn = zoneAt(x, z); return zn ? zn.id : null; },
-    neighbourhoodAt(x, z) { const zn = zoneAt(x, z), h = zn && zn.hoods.find((hd) => x >= hd.x0 && x < hd.x1); return h ? h.id : null; },
+    neighbourhoodAt(x, z) { const zn = zoneAt(x, z), h = zn && zn.hoods.find((hd) => x >= hd.x0 && x < hd.x1 && (hd.z0 === undefined || (z >= hd.z0 && z < hd.z1))); return h ? h.id : null; },
     isLand: (x, z) => inRect(WORLD, x, z) && z <= SHORE,
     depthAt: (x, z) => (z > SHORE ? Math.max(0, -map.heightAt(x, z)) : 0),
     // ground height: kerbs, the promenade, the beach sloping under the sea. level is for decks, later.
@@ -160,7 +172,9 @@ export function createMap() {
       if (z > 72) return 0.02 - (z - 72) / 28;
       if (z > 50) return 0.02;
       if (z >= 44) return onPromenade(x, z) ? CURB : 0;
-      return blockAt(x, z) ? CURB : 0;
+      if (blockAt(x, z)) return CURB;
+      const zn = zoneAt(x, z);              // a plaza paved over a closed street stands as high as the sidewalk
+      return zn && zn.plazas && zn.plazas.some((r) => inRect(r, x, z)) ? CURB : 0;
     },
     surfaceAt(x, z) {
       if (z > SHORE) return 'water';
