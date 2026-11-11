@@ -6,7 +6,7 @@ export default {
   recipe: { bpm: [130, 150], scales: ['minor', 'phrygian'], kit: 'club', instruments: ['kick', 'snare', 'clap', 'hat', 'open-hat', 'bass-808', 'saw-bass', 'lead', 'pluck', 'bell', 'riser', 'sub-drop', 'foghorn'] },
   startsIn: ['sailfin', 'cobia', 'bonito', 'snapper', 'pinfish', 'skimmer', 'dragonfly', 'anchovy', 'gnat', 'wahoo', 'needlefish', 'sandflea', 'swordtail'], firstFor: 'teo',
   // the 808 is the loudest thing here, with a 500 ms decay; each kick dips it 6 dB for 60 ms
-  kit: { kick: ['kick', { variant: 'club', gain: -2 }], bass: ['bass-808', { decay: 0.5, gain: 3 }], lead: ['lead', { variant: 'one', gain: 1 }], pad: ['pad'] },
+  kit: { kick: ['kick', { variant: 'club', gain: -2 }], bass: ['bass-808', { decay: 0.5 }], lead: ['lead', { variant: 'one', gain: 1 }], pad: ['pad'] },
   duck: { bass: [6, 0.06], pad: [5, 0.18] },
   songs: [{
     title: 'Ninety-Four Percent', artist: 'Kid Condensation', seed: 10191, bpm: 140, key: 'F', scale: 'minor', bars: 4,

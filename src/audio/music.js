@@ -188,7 +188,7 @@ export function createMusic(ac, synth) {
   function pump() {
     if (!music.playing || ac.state !== 'running') return;
     const now = ac.currentTime;
-    if (lastPump) gap = Math.max(now - lastPump, gap * 0.9);
+    if (lastPump) gap = Math.max(now - lastPump, gap * 0.995);      // widens at once, narrows over a few seconds
     lastPump = now;
     const ahead = Math.min(1.5, Math.max(AHEAD, gap * 3));
     music.ahead = ahead;
@@ -208,7 +208,7 @@ export function createMusic(ac, synth) {
       c = compile(song);
       music.song = song; music.station = station; music.hold = hold; music.playing = true;
       kit = { ...station.kit, ...song.kit };
-      pos = 0; nextT = t0 = Math.max(at || 0, ac.currentTime + 0.05); lastPump = 0; beatLen = 60 / song.bpm;
+      pos = 0; nextT = t0 = Math.max(at || 0, ac.currentTime + 0.05); beatLen = 60 / song.bpm;
       kicks.length = 0; music.bar = 0; music.section = c.sections[0].name;
       synth.setTempo(song.bpm);
       pump();

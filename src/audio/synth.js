@@ -147,18 +147,19 @@ export function createSynth(ac, out, { voiceCap = 12, stereo = false, seed = 7 }
     const p = ac.createStereoPanner(); p.pan.value = ev.pan; node.connect(p); p.connect(dest);
   };
   // a drum made of noise: bursts is a list of [start, attack, decay, level]
-  function noiseHit(name, t, v, bursts, ev = {}) {
+  // (`extra` marks a second layer of a note that is already counted as a voice)
+  function noiseHit(name, t, v, bursts, ev = {}, extra = false) {
     const last = bursts[bursts.length - 1], end = t + last[0] + last[1] + last[2];
     const g = ac.createGain(), p = g.gain;
     p.setValueAtTime(SILENT, t);
     for (const [at, a, d, level] of bursts) { p.linearRampToValueAtTime(v * level, t + at + a); p.exponentialRampToValueAtTime(SILENT, t + at + a + d); }
-    burst(t, end).connect(g); pan(g, ev, into(name)); g.end = end; track(end, g);
+    burst(t, end).connect(g); pan(g, ev, into(name)); g.end = end; if (!extra) track(end, g);
     return g;
   }
-  function tone(name, t, v, type, f0, f1, glide, a, d, ev = {}) {
+  function tone(name, t, v, type, f0, f1, glide, a, d, ev = {}, extra = false) {
     const g = amp(t, v, a, d, 0), o = osc(type, f0, t, g.end);
     if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + glide);
-    o.connect(g); pan(g, ev, into(name)); track(g.end, g);
+    o.connect(g); pan(g, ev, into(name)); if (!extra) track(g.end, g);
     return g;
   }
 
@@ -167,12 +168,12 @@ export function createSynth(ac, out, { voiceCap = 12, stereo = false, seed = 7 }
     kick(t, ev) {
       const k = { dembow: [48, 0.18], club: [44, 0.4], soft: [50, 0.2] }[ev.variant] || [48, 0.28], v = vel(ev);
       tone('kick', t, v, 'sine', ev.variant === 'soft' ? 120 : 150, k[0], 0.09, 0.001, k[1]);
-      noiseHit('hat', t, v * 0.8, [[0, 0.0005, 0.004, 1]]);                     // the click
+      noiseHit('hat', t, v * 0.8, [[0, 0.0005, 0.004, 1]], {}, true);           // the click
     },
     snare(t, ev) {
       const v = vel(ev);
       const body = amp(t, v * dB(-3), 0.001, 0.12, 0), o = osc('triangle', 185, t, body.end);
-      o.frequency.exponentialRampToValueAtTime(140, t + 0.06); o.connect(body); body.connect(strip('snare')); track(body.end, body);
+      o.frequency.exponentialRampToValueAtTime(140, t + 0.06); o.connect(body); body.connect(strip('snare'));
       if (ev.variant === 'tail') {
         // Tideline 98: a 40 ms body, then a 280 ms tail at -12 dB that stops at once (a gate, not a fade)
         const g = ac.createGain(), p = g.gain, end = t + 0.32;
@@ -262,7 +263,7 @@ export function createSynth(ac, out, { voiceCap = 12, stereo = false, seed = 7 }
     },
     marimba(t, ev) {
       const f = hz(ev.n), v = vel(ev), long = ev.n < 48 ? 0.42 : 0.26;
-      for (const [k, level, d] of [[1, 0, long], [4, -10, 0.04], [10, -22, 0.015]]) tone('marimba', t, v * dB(level) * 0.8, 'sine', f * k, 0, 0, 0.001, d);
+      for (const [k, level, d] of [[1, 0, long], [4, -10, 0.04], [10, -22, 0.015]]) tone('marimba', t, v * dB(level) * 0.8, 'sine', f * k, 0, 0, 0.001, d, {}, k > 1);
     },
     bell(t, ev) {
       const f = hz(ev.n), g = amp(t, vel(ev) * 0.7, 0.001, 1.4, 0), car = osc('sine', f, t, g.end), mod = osc('sine', f * 3.5, t, g.end), index = ac.createGain();
@@ -297,7 +298,7 @@ export function createSynth(ac, out, { voiceCap = 12, stereo = false, seed = 7 }
       pan(g, { pan: 0.2 }, into('cowbell')); track(end, g);
     },
     clave(t, ev) { tone('clave', t, vel(ev), 'sine', 2400, 0, 0, 0.0005, 0.03); },
-    rim(t, ev) { tone('rim', t, vel(ev), 'sine', 1700, 0, 0, 0.0005, 0.02); noiseHit('hat', t, vel(ev) * 0.6, [[0, 0.0005, 0.002, 1]]); },
+    rim(t, ev) { tone('rim', t, vel(ev), 'sine', 1700, 0, 0, 0.0005, 0.02); noiseHit('hat', t, vel(ev) * 0.6, [[0, 0.0005, 0.002, 1]], {}, true); },
     conga(t, ev) {
       const v = vel(ev), f = ev.low ? 180 : 220;
       if (ev.slap) noiseHit('snare', t, v * 0.5, [[0, 0.001, 0.015, 1]]);
