@@ -1,11 +1,9 @@
-// Test helper: opens the built game in a headless browser, saves a screenshot to shots/,
-// and prints the day 2 checks D2.1 (Slide) and D2.2 (Props).
+// Test helper: opens the built game in a headless browser and saves a screenshot to shots/.
 // usage: PLAYWRIGHT_BROWSERS_PATH=/studio/.pw node tools/shot.mjs [name] [hour] [w] [h] [driveSeconds] [keys] [js] [query]
 //   js runs in the page before the shot (window.__game.test is there); query is added to the URL, like "&clip=day-2"
 import { chromium } from 'playwright';
 import { preview } from 'vite';
-import { FLAGS, runChecks, print } from './check.mjs';
-import checks from './checks/D2-S1.mjs';
+import { FLAGS } from './check-lib.mjs';
 
 const [name = 'shot', hour = '14', w = '960', h = '540', drive = '0', keys = 'ArrowUp', js = '', query = ''] = process.argv.slice(2);
 const server = await preview({ preview: { port: 4179, strictPort: false }, logLevel: 'silent' });
@@ -30,6 +28,5 @@ const info = await page.evaluate(() => {
   return { x: g.car.x, z: g.car.z, kmh: g.car.kmh, calls: i.render.calls, tris: i.render.triangles, worldTris: g.world.triangles, propTris: g.props.triangles };
 });
 console.log(JSON.stringify(info), errors.length ? '\nERRORS:\n' + errors.join('\n') : '\nno console errors');
-print(await runChecks(checks, browser, url, ['D2.1', 'D2.2']));
 await browser.close();
 await server.close();

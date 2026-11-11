@@ -3,7 +3,7 @@
 // instanced mesh (one draw call per part), so a hundred cones cost the same as one.
 
 import * as THREE from 'three';
-import { MeshBuilder, rng } from './builder.js';
+import { MeshBuilder, rng } from '../gfx/builder.js';
 
 const POST = 0x2b2838;
 

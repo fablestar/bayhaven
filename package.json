@@ -5,10 +5,11 @@
   "description": "An original open-world crime game for the browser, by fablestar games.",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "node tools/changelog.mjs && vite",
+    "build": "node tools/changelog.mjs && vite build",
     "preview": "vite preview",
-    "check": "node tools/check.mjs"
+    "check": "PLAYWRIGHT_BROWSERS_PATH=.pw node tools/check.mjs",
+    "lint": "node tools/lint-names.mjs"
   },
   "dependencies": {
     "three": "^0.187.0"

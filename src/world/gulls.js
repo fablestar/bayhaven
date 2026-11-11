@@ -2,7 +2,7 @@
 // bird), and the wings flap by moving the vertices each frame. They go home at night.
 
 import * as THREE from 'three';
-import { rng } from './builder.js';
+import { rng } from '../gfx/builder.js';
 
 export function createGulls(scene, count = 9) {
   const rnd = rng(4242);

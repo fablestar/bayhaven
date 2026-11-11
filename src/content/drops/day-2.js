@@ -2,13 +2,13 @@
 // spawn and a score board on the promenade. Only built when the build day is 2.
 
 import * as THREE from 'three';
-import { MeshBuilder } from './builder.js';
+import { MeshBuilder } from '../../gfx/builder.js';
 
 const NEON = [0xff3fa4, 0x29e6ff, 0x5dff9b, 0xffa02e];
 const FONT = '"Trebuchet MS", "Arial Black", sans-serif';
 const fmt = (n) => Math.round(n).toLocaleString('en-US');
 
-export function createDriftNight(scene, world, props, events, hud) {
+function createDriftNight(scene, world, props, events, hud) {
   const score = { best: 0, last: 0, total: 0, drifts: 0, cones: 0, coneCount: 0 };
   const cone = (x, z, i) => { props.add('cone', x, 0, z, 0, { color: NEON[i % NEON.length] }); score.coneCount++; };
 
@@ -83,3 +83,9 @@ export function createDriftNight(scene, world, props, events, hud) {
     },
   };
 }
+
+export default {
+  day: 2, id: 'drift-night', marker: { x: 30, z: 37 },
+  start(ctx) { const m = ctx.modules; return createDriftNight(ctx.scene, m.world, m.props, ctx.events, m.hud); },
+  stop() {},
+};

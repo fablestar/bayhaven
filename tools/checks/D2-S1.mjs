@@ -288,7 +288,7 @@ export default [
       const s = await page.evaluate(() => window.__game.test.stats());
       t.expect(s.calls, '<=', 150, 'draw calls in a slide at dusk');
       t.expect(s.tris, '<=', 180000, 'triangles in a slide at dusk');
-      const big = readdirSync('src').map((f) => [f, readFileSync('src/' + f, 'utf8').split('\n').length]).filter(([, n]) => n > 500);
+      const big = readdirSync('src', { recursive: true }).filter((f) => f.endsWith('.js')).map((f) => [f, readFileSync('src/' + f, 'utf8').split('\n').length]).filter(([, n]) => n > 500);   // D2-S2: src/ has folders now
       t.expect(big.length, '==', 0, 'source files over 500 lines ' + JSON.stringify(big));
     },
   },

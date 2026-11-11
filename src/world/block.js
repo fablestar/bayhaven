@@ -4,9 +4,9 @@
 // streets, five neighbour blocks, a palm promenade and the beach to the south, then the sea.
 
 import * as THREE from 'three';
-import { MeshBuilder, rng, glowTexture } from './builder.js';
-import { createParkedCar } from './car.js';
-import { signAtlas, grainTexture } from './textures.js';
+import { MeshBuilder, rng, glowTexture } from '../gfx/builder.js';
+import { createParkedCar } from '../vehicles/models.js';
+import { signAtlas, grainTexture } from '../gfx/atlas.js';
 
 const PASTEL = [0xff9eb5, 0x8fe3cf, 0xffc98f, 0x9fd2ff, 0xfff1c9, 0xc9a8ff, 0xff8f7a, 0x7fd6e8, 0xf7f3ea];
 const NEON = [0xff3fa4, 0x29e6ff, 0xb46bff, 0xffa02e, 0x5dff9b, 0xff5a5a];

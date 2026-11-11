@@ -3,3 +3,4 @@ dist
 .pw
 *.log
 shots
+src/core/build.js
