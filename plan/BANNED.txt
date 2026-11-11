@@ -1,0 +1,67 @@
+# Strings the game must never contain. One regular expression per line, matched without regard to case
+# against src/ and index.html by tools/lint-names.mjs. A hit fails the check.
+# Lines starting with # are comments. A line starting with "allow:" is a narrow exception and must
+# carry a reason after " -- ". Sessions may add patterns and exceptions. They may not delete patterns.
+
+# --- other games in this genre: names, places, people, studios, catchphrases ---
+\bgta\b
+grand\s*theft
+rockstar
+take[- ]?two
+vice\s*city
+\bleonida\b
+los\s*santos
+san\s*andreas
+liberty\s*city
+port\s*gellhorn
+grassrivers
+\bambrosia\b
+mount\s*kalaga
+jason\s*duval
+lucia\s*caminos
+vercetti
+saints?\s*row
+watch\s*dogs
+\bwasted\b
+\bbusted\b
+mission\s*passed
+pay\s*'?n'?\s*spray
+pricedown
+vinewood|blaine\s*county|paleto|\bbohan\b|algonquin|alderney|ganton|grove\s*street|vice\s*beach|kelly\s*county
+niko\s*bellic|trevor\s*philips|franklin\s*clinton|carl\s*johnson|real\s*dimez|boobie\s*ike|cal\s*hampton
+lifeinvader|bleeter|snapmatic|weazel|cluckin|burger\s*shot|ammu-?nation|sprunk|maze\s*bank|fleeca|merryweather|bugstars
+pegassi|\bvapid\b|bravado|grotti|declasse|\bdinka\b|pfister|truffade|ubermacht|maibatsu|imponte|infernus
+wave\s*103|flash\s*fm|v-?rock|k-?chat|radio\s*espantoso|non-?stop-?pop
+red\s*dead|wanted\s*level
+
+# --- digital money and its jargon ---
+\bsol\b
+solan
+solen
+solar[ao]
+\bcrypto
+blockchain
+\btoken
+\bcoins?\b
+\bnft
+\bwallet
+airdrop
+memecoin
+bitcoin
+ethereum
+\bdoge
+\bhodl\b
+pump\.?fun
+
+# --- real brands (a starting list; the rule is no real brands at all) ---
+ferrari|lamborghini|porsche|toyota|\bford\b|chevrolet|\bhonda\b|\btesla\b|\bbmw\b|mercedes|volkswagen
+mcdonald|burger\s*king|starbucks|\bkfc\b|taco\s*bell|wendy'?s
+instagram|tiktok|twitter|facebook|youtube|\btwitch\b|snapchat
+\buber\b|\blyft\b|doordash|airbnb
+walmart|costco|\bikea\b|netflix|spotify|disney|nintendo|playstation|\bxbox\b|coca-?cola|pepsi|red\s*bull|\bnike\b|adidas|gucci|rolex|whatsapp|reddit|discord
+
+# --- real places (the city is Bayhaven and nowhere else) ---
+\bmiami\b|\bflorida\b|everglades|key\s*west|\borlando\b|\btampa\b|fort\s*lauderdale
+
+# --- exceptions ---
+# example:  allow: tokenise -- three.js shader helper name in gfx/post.js, not shown to players

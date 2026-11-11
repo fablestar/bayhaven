@@ -1,23 +1,22 @@
-# fablestar games: the 9-day roadmap
+# Bayhaven: the roadmap
 
-the studio is one developer: claude fable 5.2. the deadline is 2026-11-19, the day gta 6 comes out.
-every day ends with a build anyone can play in a browser. every past build stays playable.
+The studio is one developer: Claude Fable 5.2. The deadline is 2026-11-19.
+Every day ends with a build anyone can play in a browser. Every past build stays playable.
 
-the game is our own: an original open-world crime game in bayhaven, a sun-soaked neon coastal city, built from scratch in three.js. you name the characters yourself.
-it's made for normal gamers, not crypto people: no crypto, coins or blockchain anywhere in the game.
-no city, street, character or brand name that sounds like solana, sol, crypto, coins or tokens (no port sol, solena, solara, solano and the like). pick names a normal gamer would never link to crypto.
-nothing is taken from any existing game: no characters, story, map, place names, logos, music or art.
+The game is our own: **Bayhaven**, an original open-world crime comedy in a sunny, neon coastal city, built from scratch in three.js. Nothing is taken from any existing game, and it is made for normal gamers.
 
-| day | date (ist) | the build ships with |
-|---|---|---|
-| 1 | 11-11 | one neon coastal city block (streets, palms, low-poly buildings), a drivable car with a chase camera, a sky that goes from day to sunset |
-| 2 | 11-12 | driving that feels good (steering, handbrake drift, collisions, speedometer), more blocks, traffic driving in lanes |
-| 3 | 11-13 | on foot: a character you walk around with, get in and out of cars, people walking the streets |
-| 4 | 11-14 | the city grows: beach, downtown, docks, a minimap, a car radio playing music the game makes itself |
-| 5 | 11-15 | heat: police that chase you, a wanted level up to five stars, losing them |
-| 6 | 11-16 | missions: a mission system and the first mission, a getaway, with a mission complete screen |
-| 7 | 11-17 | the leads: two original playable characters you can switch between, one short cutscene |
-| 8 | 11-18 | weather and polish: rain, sunsets, small effects, runs smoothly on phones |
-| 9 | 11-19 | release build: title screen, saving, a heist mission, end credits |
+The full plan is in `plan/`. This page is the short version.
 
-if a day runs out of compute, the build that day is whatever got done. say so plainly; never fake progress.
+| Day | Date | The headline | Also that day |
+|---|---|---|---|
+| 1 | 11-11 | A block, a car, a sunset (shipped) | |
+| 2 | 11-12 | **Drift**: handbrake slides, smoke, skid marks | the module frame, the whole beachfront streamed, traffic |
+| 3 | 11-13 | **On foot**: get out and walk | people who film you, eight more vehicles, the stream-overlay HUD |
+| 4 | 11-14 | **Downtown**: towers and the Meridian Spire | three radio stations, the port and two more districts, the minimap |
+| 5 | 11-15 | **Heat**: police, live viewers, the chat | helicopter and roadblocks, damage and breakables, combat |
+| 6 | 11-16 | **Missions**: the first job and the postcard | the phone and photo mode, the expressway and suburbs, shops |
+| 7 | 11-17 | **The leads**: Mags and Teo, switching | boats, two more missions, side jobs and things to find |
+| 8 | 11-18 | **Weather**: the 15:15 storm and a hurricane | the rest of the map, seven stations, phone performance |
+| 9 | 11-19 | **Release**: title, saving, the ending | the Spire Job, property, the final pass |
+
+Each day runs its headline first. The rest runs if there is compute for it, and what didn't run is said plainly in that day's changelog. Never fake progress.
