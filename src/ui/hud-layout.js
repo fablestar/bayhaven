@@ -61,7 +61,9 @@ export function layoutFor(W, H, touch, ins) {
     put('tag', cx - 110, t, 220, 44 + 73, 40, ['toast', 'radio']).string = 44;
     put('drop', l + m, t + 58, Math.min(260, toast.x - 8 - l - m), 22, 8);
     centred('drift', t + 130, 240, 30, 8);
-    centred('subtitle', b - 134 - 52, 300, 52, 2, ['hint', 'prompt']);
+    // the spoken line sits between the resting stick and the look-back button
+    const subL = mm.x + mm.w + 14 + 120 + 8, subR = r - TOUCH.rightBlock - 8, subW = Math.min(300, subR - subL);
+    put('subtitle', (subL + subR) / 2 - subW / 2, b - 134 - 52, subW, 52, 2, ['hint', 'prompt']);
     mid('hint', b - 66 - 56, 420, 56, 2, ['subtitle']);
   } else {
     mm = put('minimap', l + m, b - mb - mmSize, mmSize, mmSize);
