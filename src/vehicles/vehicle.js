@@ -174,7 +174,8 @@ export function createCar(scene, world, props, events, paint = 0xff4f6e, accent 
   car.reset = function (pose) {
     Object.assign(car, { vf: 0, vl: 0, w: 0, steer: 0, gear: 0, shiftT: 0, slip: 0, slipSigned: 0, sR: 0, rearOut: false }, pose);
     car.drift.active = false; car.drift.score = 0;
-    Object.assign(car, { lift: 0, vy: 0, thrown: 0, lean: 0 }); pvx = pvz = 0; seat();
+    Object.assign(car, { lift: 0, vy: 0, thrown: 0, lean: 0 }); seat();
+    pvx = Math.sin(car.h) * car.vf + Math.cos(car.h) * car.vl; pvz = Math.cos(car.h) * car.vf - Math.sin(car.h) * car.vl;      // being put somewhere at speed is not a hit
     acc = 0;
   };
 

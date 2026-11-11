@@ -55,14 +55,17 @@ export default [
           T.input([{ t: 0, hold: [] }]);
           // into the wall of a building at 60 km/h: find one by driving north off the road
           const before = T.count('rider:thrown');
-          // the widest wall of day 1's block, met square on from its south side
-          const wall = g.modules.world.colliders.filter((c) => c.x1 - c.x0 > 8).sort((p, q) => q.z1 - p.z1)[0], cx = (wall.x0 + wall.x1) / 2;
-          T.teleport(cx, wall.z1 + 7, Math.PI, 16.7);
+          // a long wall on the north side of day 1's street, met square on at 60 km/h
+          T.teleport(0, 37, Math.PI, 0); T.advance(0.1);
+          const wall = g.modules.world.colliders.find((c) => c.z1 > 22 && c.z1 < 31 && c.x1 - c.x0 > 10 && c.x0 > -40 && c.x1 < 40), wz = wall ? wall.z1 : 0;
+          out.wall = !!wall;
+          T.teleport(wall ? (wall.x0 + wall.x1) / 2 : 0, wz + 8, Math.PI, 16.7); T.advance(0.05);
+          const riding = !T.ride().thrown;
           T.input([{ t: 0, hold: ['gas'] }, { t: 1, hold: [] }]);
           T.advance(0.7);
           const v = T.ride(), thrown = T.count('rider:thrown') - before;
           T.advance(2);
-          out[model] = { left, w, thrown, wasThrown: v.thrown, back: !T.ride().thrown, kmhAfter: T.ride().kmh };
+          out[model] = { left, w, thrown, riding, wall: out.wall, wz, z: g.modules.vehicles.player.z, near: g.modules.world.colliders.length, wasThrown: v.thrown, back: !T.ride().thrown, kmhAfter: T.ride().kmh };
           T.input([{ t: 0, hold: [] }]);
         }
         return out;
@@ -71,6 +74,8 @@ export default [
         const o = r[id];
         t.expect(o.left, 'between', [0.05, 0.75], `${id}: lean at 40 km/h with left held, positive to the left`);
         t.expect(o.w, '>', 0, `${id}: it is turning left`);
+        t.note(`${id}: wall ${o.wall} at z ${o.wz.toFixed(1)}, bike at z ${o.z.toFixed(1)}, ${o.near} boxes near, ${o.kmhAfter.toFixed(0)} km/h after`);
+        t.expect(o.riding, '==', true, `${id}: still riding after being put on the road at 60 km/h`);
         t.expect(o.thrown, '==', 1, `${id}: rider:thrown fired by a 60 km/h wall hit`);
         t.expect(o.wasThrown, '==', true, `${id}: the rider is off right after the hit`);
         t.expect(o.back, '==', true, `${id}: back on 2 s later`);
@@ -248,7 +253,8 @@ export default [
           const body = g.modules.vehicles.player.group.children[0];
           const unlit = body.children.filter((m) => m.isMesh && m.material.isMeshBasicMaterial);
           const blink = T.ride().blink;
-          T.advance(0.3); await frames(2);
+          T.teleport(at.x, at.z, at.heading, 9); T.input([{ t: 0, hold: ['brake'] }, { t: 0.5, hold: [] }]);
+          T.advance(0.15); await frames(2);
           const tail = unlit[1].material.color;
           out[id] = { unlit: unlit.length, quads: unlit.map((m) => m.geometry.attributes.position.count), blink, brake: tail.r, info: T.vehicleInfo(id).lights };
           T.input([{ t: 0, hold: [] }]);
