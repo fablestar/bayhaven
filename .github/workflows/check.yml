@@ -1,0 +1,28 @@
+# Runs the same checks Fable runs at the end of every session: build, open the game in headless Chromium, check every gate.
+name: check
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm i --no-save playwright@1.65.0
+      - run: PLAYWRIGHT_BROWSERS_PATH=.pw npx playwright install --with-deps chromium
+      - run: npm run check
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: check-report
+          path: dist/report.json
+          if-no-files-found: ignore
