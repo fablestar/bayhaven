@@ -45,6 +45,34 @@ You can get out of the car. Press F and Teo steps out, walks, sprints, jumps, wa
 - **The page title and the hint in `index.html` still say day 2** (not my file). The stand-in adds the new keys to the hint line at load.
 - No art requests were made.
 
+### D3-S2 · Pedestrians (people on every sidewalk, and a flash mob)
+
+**Shipped**
+
+Bayhaven has people. They walk the sidewalks and the promenade, lie on the sand, wait at the lights, film you when you crash, jump out of your way, and get knocked over and get up cross.
+
+1. **Everyone for eight draw calls** (`pedsdraw.js`). Six instanced meshes, one per body part, with the lead rig's boxes and pivots (1.8 m, head a fifth of that); one mesh of unit boxes for hair, hats, bags, phones and the birds round a dazed head; one of blob shadows. Seven of them share one material and one 256 x 128 people atlas: the rig's faces, eight shirt patterns, six sleeve and leg cuts. Each instance carries a cloth colour, a skin colour and an atlas cell, and the atlas's alpha says which colour a texel takes. Measured: hiding the people takes exactly 8 calls off the frame.
+2. **Walking** (`peds.js`). People follow the sidewalk graph from `nav`, keep right with a side offset, pick a way on at each corner and walk 80 to 300 m before stopping somewhere. At a lit crossing they stop at the curb and wait for the walk light (the green of the road beside them), and set off only if they can be across before it ends, jogging if it will be close. At an unlit crossing they wait for cars inside 12 m. Each kind has a chance to jaywalk when no car is within 40 m. The promenade and the sand are open ground: promenade walkers keep right along it, beach people wander between spots on the sand. Someone close ahead means a step to the right.
+3. **States**: walk, cross, hang out (sit, lean, chat in twos, sunbathe, phone), flee (hands in the air, 30 to 60 m, then 6 s to calm down), film, dodge, fall over (a ten-point rope, `pedstumble.js`), dazed, get up. Near people run every step; people past 40 m run ten times a second; poses are written every frame within 30 m and every fourth or eighth frame beyond, with a two-pose walk past 60 m.
+4. **Filming** (`pedsreact.js`). A crash at 5 m/s or more (4 s), a drift (while it runs, plus 2 s), a jump landing (3 s; nothing emits `jump:landed` yet) or heat 1 and above starts a timer. Everyone within 40 m with a clear line to you decides once, by kind, from the bible's table: film, look, or shout. With three or more in range, at least three film. A phone comes up after 0.3 to 1.5 s, they turn to track you at up to 2.5 rad/s, and put it away 2 s after the interest ends. `ped:filming { count }` fires when the count changes, at most twice a second. Each phone pays 5 followers a second, times 60 / pedCap so a phone's smaller crowd pays the same.
+5. **Eight kinds** (`pedskinds.js`): tourist, jogger, retiree, skater, office worker, dock worker, clubber, beachgoer. Each has its palette and shirt pattern, hair, a hat or bag, walk and flee speeds, courage, a chance to film and hours. The count comes from the bible's table by district and hour (Tideline 60 by day, 40 in the evening, 6 at night on `high`; a third on `low`), scaled by weather. The mix comes from the zone file's weights, with kinds that are not out at that hour dropped: beachgoers leave at 18:30, clubbers arrive at 20:00.
+6. **Hit by a vehicle**: a tumble on the rope (the vehicle's velocity times 0.6 and 3 m/s upwards), 3 s lying dazed with three birds circling, 1.2 s to get up, then walking off with an angry face and a shaken fist, slower for 10 s. `ped:hit` fires with the speed. Measured at 40.1 km/h: thrown 4.9 m, walking again 5.5 s after the hit. A car under 10 km/h pushes nobody over: they step aside. People who can see a car coming jump clear of it, always under 30 km/h and by nerve up to 50; someone with their back to you does not, unless you sound the horn. The horn within 15 m also makes retirees and dock workers shout, tourists and office workers look, clubbers wave. A car up on the sidewalk or the sand sends the people within 6 m running, shouting or filming, by kind. Traffic cars knock people over by the same rules.
+7. **The drop: Flamingo Flash Mob** (`src/content/drops/day-3.js`). From 17:30 to 20:15 on the day 3 build, 150 people in flamingo pink stand on the beach at (0, 64), 15 wide and 10 deep at 1.6 m, facing the promenade, doing four moves of two beats each at 104 beats a minute off one clock: arms up, step left, step right, spin. Walk in and the people within 2 m shuffle 0.6 m aside, and the two nearest stop and film for as long as you are among them, then go back to the dance. A moving vehicle within 6 m, or a shot, breaks the grid for the evening and all 150 run. While the mob is within 150 m the street drops to 20 people on `high` and 8 on `low`. The drop line on the HUD names it.
+
+Also: `state.peds`, `modules.peds` with a small crowd interface (`crowd`, `join`, `hold`, `release`, `disband`), `test.peds.*`, a freeze for Mags's Bus Driver Voice (wired to `player:ability`, which nothing emits yet).
+
+**Not shipped**
+
+- **A green run of the whole suite.** See "Checks" at the end: my eight pass, six earlier checks and gate G4 fail, two of those six because of this session.
+
+- **Nobody stays down.** My prompt listed six states; the bible's seventh (down: a hard hit over 50 km/h, health, an ambulance) is not built. A hit at any speed is a tumble and a get-up. `state.peds.down` is always 0.
+- **Cars do not stop for people.** Traffic's 20 m cone does not see them (the vehicles lane). People wait for the walk light and for gaps, so it mostly works, but a turning car can drive into someone on a crossing and knock them over.
+- **People are not solid to Teo on foot.** He walks through them; they sidestep him. No bump reaction.
+- **Barks.** No lines are shown (that is `src/systems/barks.mod.js`, another session). The states and events it needs are there.
+- **"If you finish early"**: nobody runs for an awning. Skaters exist as a kind with a rolling pose but have no board.
+- Filming people do not step sideways for a clear view. No fame reactions. The queue at Ventanita Rosa and the towel crowds are not crowd objects (towels are two to four beachgoers spawned together).
+- No art requests were made.
+
 ## Day 2: Drift (day 2 headline)
 
 ### D2-S1 · Drift (day 2 headline)
