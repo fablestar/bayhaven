@@ -23,7 +23,8 @@ export function createChunks({ scene, map, collide, props, decor, quality, event
   const shellB = new MeshBuilder({ size: 8192 });
   let queue = [], current = null, ringAt = 0, lastX = null, lastZ = null, litWas = null;
   const centre = { cx: -99, cz: -99 };
-  const stat = { built: 0, dropped: 0, maxStepMs: 0, buildMsMax: 0, ensureMs: 0, groupsBuilt: 0, pooled: 0 };
+  const slices = new Float32Array(1024); let sliceAt = 0;      // the last 1,024 frames that did building work
+  const stat = { slices: 0, maxStepAt: '', built: 0, dropped: 0, maxStepMs: 0, buildMsMax: 0, ensureMs: 0, groupsBuilt: 0, pooled: 0 };
 
   const takeSet = () => {
     const s = sets.pop() || { G: new MeshBuilder({ size: 512 }), M: new MeshBuilder({ size: 2048 }), B: new MeshBuilder({ size: 16384 }),
@@ -53,16 +54,20 @@ export function createChunks({ scene, map, collide, props, decor, quality, event
     job.it = gen ? gen.build(o, chunk, map, heroes) : null;     // land with nothing on it yet loads as an empty chunk
     job.begun = true;
   }
+  // one mesh a call, so no single piece of work is long; true when the chunk is in the scene
   function upload(job) {
     const chunk = job.chunk;
-    for (const l of LETTERS) {
-      const b = job.set[l];
+    job.at = job.at || 0;
+    while (job.at < LETTERS.length) {
+      const l = LETTERS[job.at++], b = job.set[l];
       if (!b.count) continue;
       const mesh = new THREE.Mesh(b.build({ free: true, groundUv: l === 'G' ? 7 : 0 }), mats[l]);
-      mesh.matrixAutoUpdate = false; mesh.renderOrder = mats.order[l] || 0;
-      if (l === 'L') { mesh.visible = mats.lit; chunk.lit = mesh; }
+      mesh.matrixAutoUpdate = false; mesh.renderOrder = mats.order[l] || 0; mesh.visible = false;
+      if (l === 'L') chunk.lit = mesh;
       chunk.tris += b.triangles; chunk.meshes.push(mesh); scene.add(mesh);
+      return false;
     }
+    for (const m of chunk.meshes) m.visible = m !== chunk.lit || mats.lit;       // the whole chunk appears at once
     for (const m of chunk.objects) scene.add(m);
     job.dec.done();
     sets.push(job.set); stat.pooled = sets.length; job.set = null;
@@ -70,6 +75,7 @@ export function createChunks({ scene, map, collide, props, decor, quality, event
     state.world.chunksLoaded = loaded.size; stat.built++;
     events.emit('chunk:loaded', { cx: chunk.cx, cz: chunk.cz, lod: 0 });
     ringAt = 0;                     // the shells round it need another look
+    return true;
   }
   function free(chunk) {
     for (const m of chunk.meshes) { scene.remove(m); m.geometry.dispose(); }
@@ -85,7 +91,7 @@ export function createChunks({ scene, map, collide, props, decor, quality, event
   }
   function cancel(job) {
     building.delete(key(job.cx, job.cz));
-    if (job.begun) { free(job.chunk); sets.push(job.set); }
+    if (job.begun) { free(job.chunk); if (job.set) sets.push(job.set); }
     if (current === job) current = null;
   }
 
@@ -160,8 +166,7 @@ export function createChunks({ scene, map, collide, props, decor, quality, event
     if (job.lod === 1) return buildGroup(job);
     if (!job.begun) { begin(job); return false; }
     if (job.it && !job.done) { job.done = job.it.next().done; return false; }
-    upload(job);
-    return true;
+    return upload(job);
   }
   function pump(budgetMs) {
     const t0 = now();
@@ -170,9 +175,10 @@ export function createChunks({ scene, map, collide, props, decor, quality, event
       current = job;
       for (;;) {
         const s0 = now();
-        if (s0 - t0 >= budgetMs) return;
+        if (s0 - t0 >= budgetMs - 1) return;          // a piece is about 1 ms: stop early so the slice stays inside the budget
         const done = step(job);
-        stat.maxStepMs = Math.max(stat.maxStepMs, now() - s0);
+        const ms = now() - s0;
+        if (ms > stat.maxStepMs) { stat.maxStepMs = ms; stat.maxStepAt = job.lod === 1 ? 'shell group' : !job.it || job.done ? 'upload' : 'build ' + job.cx + ',' + job.cz; }
         if (done) break;
       }
       current = null;
@@ -209,6 +215,7 @@ export function createChunks({ scene, map, collide, props, decor, quality, event
       const t0 = now();
       pump(quality.get('maxChunkMs'));
       chunks.buildMs = now() - t0; stat.buildMsMax = Math.max(stat.buildMsMax, chunks.buildMs);
+      if (chunks.buildMs > 0.05) { slices[sliceAt++ % slices.length] = chunks.buildMs; stat.slices++; }
       if (mats.lit !== litWas) { litWas = mats.lit; for (const ch of loaded.values()) if (ch.lit) ch.lit.visible = mats.lit; }
       const pc = map.chunkOf(p.x, p.z);
       decor.update(camera, pc.cx, pc.cz);
@@ -217,10 +224,12 @@ export function createChunks({ scene, map, collide, props, decor, quality, event
       let tris = 0, max = 0, n = 0, shell = 0, shellMax = 0, gn = 0;
       for (const ch of loaded.values()) if (ch.tris) { tris += ch.tris; max = Math.max(max, ch.tris); n++; }
       for (const g of groups.values()) if (g.mesh) { shell += g.tris; gn++; shellMax = Math.max(shellMax, g.tris / Math.max(1, g.has.size)); }
-      return { lod0: loaded.size, lod0Built: n, lod0TrisAvg: n ? Math.round(tris / n) : 0, lod0TrisMax: max, groups: gn, shellTris: shell, shellTrisPerChunkMax: Math.round(shellMax),
+      const used = Array.from(slices.subarray(0, Math.min(sliceAt, slices.length))).sort((a, b) => a - b);
+      return { buildMsP95: used.length ? used[Math.floor(used.length * 0.95)] : 0, lod0: loaded.size, lod0Built: n, lod0TrisAvg: n ? Math.round(tris / n) : 0, lod0TrisMax: max, groups: gn, shellTris: shell, shellTrisPerChunkMax: Math.round(shellMax),
         pending: chunks.pending, colliders: collide.count, ...stat };
     },
     // drop everything, shells too; the next update builds the rings again from nothing
+    resetStats() { sliceAt = 0; stat.slices = 0; stat.buildMsMax = 0; stat.maxStepMs = 0; stat.built = 0; stat.dropped = 0; },
     reset() {
       for (const ch of [...loaded.values()]) drop(ch);
       for (const j of [...building.values()]) cancel(j);

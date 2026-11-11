@@ -55,6 +55,36 @@ Nothing the player sees changed. Under the hood:
 - Changing quality while playing does not resize the effect pools (they are sized at load).
 - The debug overlay has no chunk rings or simulation levels to show yet.
 
+### D2-S3 · Streets (the whole beachfront, streamed)
+
+**Shipped**
+
+The map grew from one block to all of Tideline: 3.2 km of beachfront, 0.45 km deep. You can drive it end to end with no loading screen.
+
+1. **The map, for real** (`src/world/map.js`, `zones/tideline.js`). Zone files are found by themselves. The road network is 45 named lines (40 north-south streets from Limpet Street to Barnacle Street, five east-west) cut into 403 road pieces at 200 junctions. Coral Boulevard is 14 m beside the day 1 block and 30 m north of Seagrape Street; eight avenues are 22 m. The map answers `districtAt`, `neighbourhoodAt`, `isLand`, `depthAt`, `heightAt`, `surfaceAt`, `lotsInChunk`, `roadsInChunk`, `nearestRoad`, `roadAt`, `snap`, `landmark`, `places`. 946 lots: 932 kit lots, the day 1 block, 11 lifeguard huts, and two sites kept clear for later sessions (Pelican Rest, Phase One).
+2. **The chunk streamer** (`chunks.js`). 160 m chunks in three rings. LOD0: full detail and collision, 9 chunks on `low`, 25 on `high`, at most six meshes a chunk. LOD1: one box a building in its own colour, merged per 4 × 4 chunks into one draw call. LOD2: the skyline. Building is cut into pieces of about 1 ms and stops 1 ms short of the 4 ms budget; chunks ahead of the car's velocity go first; a chunk drops one ring further out than it loads; a dropped chunk's geometry is disposed, its colliders and props are taken out, and its builder buffers go back to a pool. The same seed gives the same city: a round trip of 2.8 km brings back the same vertex count, collider count and prop count.
+3. **Collision in a spatial hash** (`collide.js`), 20 m cells, boxes and turned boxes in one flat typed array, added and removed by owner. `circle`, `box`, `ray` (a grid walk), `pushOutCircle`, `pushOutBox`, `blocked`, and a second grid for moving bodies. A query looks at about 12 shapes, not every box in the city.
+4. **The beachfront kit** (`gen/tideline.js`, `gen/kit.js`): five recipes in day 1's style. T1 deco shopfront (day 1's building code, moved), T2 motel court with a pool and a pole sign, T3 hotel slab of 8 to 11 floors with setbacks, a fin and balconies, T4 beach shack, T5 bait shed, plus fenced empty lots in East Strand. Five neighbourhoods with the bible's shares.
+5. **The day 1 block as a hero lot** (`landmarks/day1-block.js`). Its random numbers start where day 1's stream stood when it reached this block (13,112 numbers in, sign counter 17), so every colour, fin and sign is the one day 1 drew. The roof sign tops out at 26.2 m. Its five parked cars, lamps and plaza palms keep their places.
+6. **Props and decor.** `props.js`: lamps, barriers and cones now come and go with chunks; a lamp carries its own pool of light and halo, which go out when it falls. `decor.js`: palms (four shapes and a far shape), umbrellas and benches, one instanced mesh a shape, culled by hand per chunk each frame. 12 or 13 instanced draw calls for all of it.
+7. **The skyline** (`skyline.js`): one mesh, 9,400 triangles: 194 towers where Meridian will be, the Spire at the top of Coral Boulevard, the 26 beachfront buildings over 30 m, and the far ground.
+8. **MeshBuilder v2**: float positions, byte normals, byte colours (18 bytes a vertex, was 36). Typed arrays that grow and are used again; chunk meshes let their copies go once uploaded.
+9. **Lanes and sidewalks from the real roads** (`nav.js`, same contract): 782 lanes (one, two or three each way by road width, stopping width / 2 + 2 short of each junction, legal turns only, lights at 9 junctions on Heron Walk Drive), 1,506 walking edges with crossings. `route` is A* over junctions.
+10. **Striped barriers where the map ends**: day 1's barrier across all 40 streets at the north edge and both ends of the five east-west streets.
+11. **From the "if you finish early" list:** the 11 lifeguard huts, each in its own body and roof colours. Gullwing Pier was not built.
+
+**Not shipped**
+
+- **Gullwing Pier** (deck and ferris wheel). The promenade leaves its gap at x 592 to 608 and the canon data is in the zone file.
+- **Two checks from other day 2 sessions now fail, and I did not edit them** (they are not my files): `D2-S1.3` expects a barrier at x = 100 on Heron Walk Drive, where the map used to end; `D2-S2.4` is the check of the old map and lane stand-ins (exactly 20 lanes, a dead end). The other 16 of those sessions' checks pass on the new city. `npm run check -- --id D2-S3` passes; `--day 2` will not until those two are brought up to date.
+- **The sign atlas is still day 1's fixed sheet**, with four more names in its last four cells. The shelf packer of the bible's section 10 is not built, so kit shops share 14 signs.
+- **The window-grid texture (`W` walls) is not built.** On `low`, upper floors get one ribbon of glass a floor instead.
+- **No lit windows on the skyline** at night; it is one lambert mesh.
+- **T6, T7, T8 and every tier B landmark**: their lots are T1 for now, as the bible says. Hotel Alba, Park & Sons and the others are still kit buildings.
+- **The car and the camera were not moved to the new collision calls** (not my folder). `modules.world` keeps day 1's shape and hands the car only the boxes within 14 m.
+- **Ordering in the pump is by chunk, not by lot**, and lanes are built once for the whole map instead of per chunk.
+- No art requests were made.
+
 ## Day 1: A block, a car, a sunset: the block comes alive (2026-11-11)
 
 ### D1-S1 · A block, a car, a sunset: the block comes alive (2026-11-11)

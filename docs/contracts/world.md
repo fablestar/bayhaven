@@ -2,16 +2,27 @@
 
 | Name | Signature | Meaning |
 |---|---|---|
-| modules.world | `colliders [{ x0, x1, z0, z1 }]` · `buildings` · `bounds` · `spawn` · `heightAt(x, z)` · `insideBuilding(x, y, z, pad)` · `triangles` | The day 1 block, in day 1's shape. Goes away when `chunks` and `collide` ship |
-| modules.map | `districtAt(x, z)` · `isLand(x, z)` · `heightAt(x, z)` · `depthAt(x, z)` · `surfaceAt(x, z)` · `nearestRoad(x, z)` · `snap(seed, need)` · `chunkOf(x, z)` · `bounds` · `drawn` | Answers for the day 1 block only; `tideline` inside it, `null` outside |
-| modules.nav | `lanes` · `lane(id)` · `laneNear(x, z, heading)` · `next(lane, r)` · `lanesInChunk(cx, cz)` · `route(from, to, { avoid }) → [{ x, z }]` · `streets` | 20 lanes on the block's four streets, keep right, 3.5 m off centre. A lane is `{ id, roadId, name, kind, ax, az, bx, bz, len, heading, speed, level, next: [ids], signal, left, right }` |
-| modules.props | `add(kind, x, y, z, rot, { color, onChange })` (during init only) · `hitTest(cx, cz, R, vx, vz, onHit)` · `reset()` · `count(kind, 'down' or 'up')` | Lamps, barriers, cones; one instanced mesh per part. Updates at order 26, after vehicles |
+| modules.map | `districtAt(x, z)` · `neighbourhoodAt(x, z)` · `isLand(x, z)` · `depthAt(x, z)` · `heightAt(x, z, level)` · `surfaceAt(x, z)` · `lotsInChunk(cx, cz)` · `roadsInChunk(cx, cz)` · `blocksInChunk(cx, cz)` · `blockAt(x, z)` · `landmark(id)` · `places(kind)` · `nearestRoad(x, z) → { x, z, heading, roadId, name, kind, width, d }` · `roadAt(x, z)` · `snap(seed, need)` · `snapFailures` · `chunkOf(x, z) → { cx, cz }` · `chunkRect(cx, cz)` · `chunkSeed(cx, cz)` · `inWorld(cx, cz)` · `zone(id)` · `zoneAt(x, z)` · `zones` · `pieces` · `nodes` · `lots` · `blocks` · `bounds` · `spawn` · `world` | The map. Loads `zones/*.js`. Pure data, no three.js. `chunkOf` uses the plan's index: `cx = floor((x + 3200) / 160)`, `cz = floor((z + 3520) / 160)` |
+| a zone file | `{ id, name, bounds, seed, roads: { lines }, rows, kit, hoods, hero, reserved, promenade, landmarks, places, generator, traffic, peds, ambience, palette }` | A road line is `{ id, name, axis: 'ns' or 'ew', at, from, to, kind, width or widths, closed }` |
+| a lot | `{ id, zone, hood, block, recipe, kit, x0, x1, z0, z1, face, sides, seed, floors, h, wall, body }` · hero lots add `hero`, reserved sites `reserved` | Footprint (`body`), height and wall colour are fixed in the map, so the full building, its far shell and the skyline agree |
+| a road piece | `{ id, roadId, name, kind, axis, ax, az, bx, bz, len, width, lanes, speed, level, a, b, stub }` | `a` and `b` are junction keys (`'x,z'`), or null at a dead end; `stub` pieces end at a barrier and carry no lanes |
+| modules.chunks | `isLoaded(cx, cz)` · `loadedCount` · `pending` · `ensure(x, z, radius) → Promise` · `buildMs` · `stats()` · `resetStats()` · `reset()` · `decor` · `skyline` | The streamer. Emits `chunk:loaded` and `chunk:unloaded` with `{ cx, cz, lod }`. With `?day=1` it is off (`disabled: true`) |
+| a generator, `gen/<id>.js` | `export default { id, *build(o, chunk, map, heroes), shell(o, chunk, map, heroes) }` | `build` is a generator function: it yields after each lot so the streamer can stop. `o` is described at the top of `gen/kit.js` |
+| a hero lot, `landmarks/<id>.js` | `export default { id, build(o, lot, map), shell(o, lot) }` | Hand-written pieces: `day1-block`, `lifeguard-hut` |
+| modules.collide | `add(owner, shape) → id` · `removeOwner(owner)` · `circle(x, z, r, level, out) → count` · `box(obb, level, out)` · `ray(x0, z0, x1, z1, level, minH) → { t, x, z, owner, shape } or null` · `pushOutCircle(body)` · `pushOutBox(body)` · `blocked(x, y, z, pad)` · `bodies.add remove near refresh` · `count` · `stats()` | The spatial hash, 20 m cells. A shape is `{ x0, x1, z0, z1, level, h }` or `{ cx, cz, hw, hd, rot, level, h }`. `out` is filled with shape objects `{ id, owner, x0, x1, z0, z1, h, level }` |
+| modules.nav | `lanes` · `lane(id)` · `laneNear(x, z, heading)` · `next(lane, r)` · `lanesInChunk(cx, cz)` · `green(lane, seconds)` · `walks` · `walkNear(x, z)` · `walkNext(edge, r)` · `crossings(edge)` · `walksInChunk(cx, cz)` · `route(from, to, { avoid }) → [{ x, z }]` · `streets` · `nodes` | A lane is `{ id, roadId, name, kind, index, of, ax, az, bx, bz, len, heading, speed, level, next: [ids], signal, left, right, from, to }`. It stops width / 2 + 2 short of each junction. A walking edge is `{ id, kind: 'walk' or 'crossing', ax, az, bx, bz, len, next: [edges], crossing }` |
+| modules.props | `add(kind, x, y, z, rot, { color, onChange, noLight, owner }) → prop or null` · `spawn(kind, x, z, opts) → id` · `remove(id or prop)` · `hit(id, vx, vz)` · `near(x, z, r, out)` · `hitTest(cx, cz, R, vx, vz, onHit)` · `reset()` · `count(kind, 'down' or 'up')` · `kinds` · `all` | Lamps, barriers, cones. `add` works at any time now. A lamp carries its own pool of light and halo. Updates at order 26, after vehicles |
+| modules.world | `colliders` · `buildings` · `bounds` · `spawn` · `heightAt(x, z)` · `insideBuilding(x, y, z, pad)` · `triangles` | Day 1's shape, kept for the car and the camera. `colliders` now holds only the boxes within 14 m of the player, filled again every step from the hash; `colliders.push(box)` adds a permanent box to the hash. **Vehicles and actors should move to `modules.collide` and `modules.map`; then this goes away** |
 | modules.gulls | `{}` | Gulls over the beach |
 
-Allowed import from another lane: `block.js` imports `createParkedCar` from `src/vehicles/models.js`.
+Allowed import from another lane: `landmarks/day1-block.js` and `block.js` import `createParkedCar` from `src/vehicles/models.js`.
 
-Events I emit: `district:entered { id, was }` (map). `prop:broken` is emitted by vehicles for now.
+Test API entries: `test.chunks()` (the streamer's numbers), `test.ensure(x, z, radius)`.
 
-Events I listen to: `game:reset` (props stand back up).
+Events I emit: `district:entered { id, was }` (map), `chunk:loaded` and `chunk:unloaded { cx, cz, lod }` (chunks). `prop:broken` is still emitted by vehicles.
 
-Stand-ins I left: `map.js` and `map.mod.js` (replace with the `map` contract in plan/bible/tech/contracts.md), `nav.js` and `nav.mod.js` (replace with the `nav` contract; `walkNear`, `walkNext`, `crossings` return nothing).
+Events I listen to: `game:reset` (props stand back up), `quality:changed` (the city is built again at the new detail).
+
+`?day=1`: `block.js` is day 1's whole block, built as it was, with nothing streaming. It is there so day 1's numbers can still be checked.
+
+Stand-ins I left: none. Not yet matching the bible: the nav graph is built once for the whole map instead of per chunk (it is pure data and small); `map.heightAt` ignores `level` (no decks yet); walking edges do not check lights.

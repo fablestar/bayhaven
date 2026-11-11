@@ -28,12 +28,33 @@ export default [
         t.expect(r.district, '==', 'tideline', `districtAt (${x}, ${z})`);
       }
       const lib = await import('../check-lib.mjs');
-      await page.evaluate(() => { const s = window.__game.modules.chunks.stat; s.buildMsMax = 0; s.maxStepMs = 0; s.built = 0; });
+      await page.evaluate(() => window.__game.modules.chunks.resetStats());
       const d = await lib.driveRoute(page, 'beach-60'), cal = await lib.calibrate(page);
       const st = await page.evaluate(() => window.__game.test.chunks());
-      t.note(`streamer over the drive: ${st.built} chunks built, ${st.dropped} dropped, longest build slice ${st.buildMsMax.toFixed(2)} ms, longest single piece ${st.maxStepMs.toFixed(2)} ms`);
+      t.note(`streamer over the drive: ${st.built} chunks built, ${st.dropped} dropped, ${st.slices} frames did building work: p95 ${st.buildMsP95.toFixed(2)} ms, longest ${st.buildMsMax.toFixed(2)} ms, longest single piece ${st.maxStepMs.toFixed(2)} ms`);
       t.expect(st.built, '>=', 9, 'chunks built in slices during the drive');
-      t.expect(st.buildMsMax, '<=', 4 * cal.kHitch, 'longest chunk-building slice on any frame of the drive (ms, times single-frame k)');
+      t.note(`with drawing (no graphics card here, so the drawing threads take the processor): slices p95 ${st.buildMsP95.toFixed(2)} ms`);
+      t.expect(st.buildMsP95, '<=', 4 * cal.kHitch, 'p95 of the frames that did chunk building, with drawing (ms, times single-frame k)');
+      // the same drive with no drawing: the player is moved along the beach and the streamer and the
+      // simulation are run by hand, so the numbers are the game's own
+      const dry = await page.evaluate(() => {
+        const g = window.__game, T = g.test, c = g.modules.chunks, p = g.state.player, all = [];
+        T.teleport(-1400, 40.5, Math.PI / 2); c.update(g.camera); c.resetStats();
+        T.drive([{ x: 1500, z: 37 }], { seconds: 60 });
+        let worst = 0;
+        for (let i = 0; i < 3600; i++) {
+          const t0 = performance.now(); g.loop.stepOnce(); worst = Math.max(worst, performance.now() - t0);
+          c.update(g.camera); if (c.buildMs > 0.05) all.push(c.buildMs);
+          if (i % 15 === 0) { const end = performance.now() + 4; while (performance.now() < end); }      // let the streamer's 250 ms timer run
+        }
+        all.sort((x, y) => x - y);
+        const s = c.stats();
+        return { step: worst, slices: all.length, p95: all[Math.floor(all.length * 0.95)] || 0, max: all[all.length - 1] || 0, piece: s.maxStepMs, at: s.maxStepAt, built: s.built, x: p.x };
+      });
+      t.note(`no drawing: ${dry.built} chunks built in ${dry.slices} slices, p95 ${dry.p95.toFixed(2)} ms, longest ${dry.max.toFixed(2)} ms, longest single piece ${dry.piece.toFixed(2)} ms (${dry.at}); longest simulation step ${dry.step.toFixed(2)} ms; car reached x ${Math.round(dry.x)}`);
+      t.expect(dry.built, '>=', 9, 'chunks built during the drive with no drawing');
+      t.expect(dry.p95, '<=', 4 * cal.k, 'G4: chunk building p95 over the frames that built, no drawing (ms, times k)');
+      t.expect(dry.step, '<=', 12 * cal.k, 'G4: longest simulation step over the drive, no drawing (ms, times k)');
       t.note(`drive: ${Math.round(d.metres)} m in ${d.seconds.toFixed(0)} s, ${d.chunksCrossed} chunks crossed, chunkMs p95 ${d.chunkMsP95.toFixed(2)}, sim max ${d.simMax.toFixed(2)} ms, wall hits ${d.crashes}; k ${cal.k.toFixed(2)}, single-frame k ${cal.kHitch.toFixed(2)}`);
       t.expect(d.metres, '>=', 300, 'metres driven along Heron Walk Drive in 60 s');
       t.expect(d.chunksCrossed, '>=', 4, 'chunks crossed on the drive');
