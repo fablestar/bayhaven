@@ -191,9 +191,12 @@ export default [
         const driver = th.last && th.last.driver != null && T.peds ? T.peds.get(th.last.driver) : null;
         const d0 = driver ? { x: driver.x, z: driver.z } : null;
         T.advance(4);
-        const d1 = th.last && th.last.driver != null && T.peds ? T.peds.get(th.last.driver) : null;
+        const subtitleAfter = T.cartheft().subtitle;
+        // they may first wait at the kerb for a light: give them up to 16 s to be on their way
+        let d1 = null, took = 4;
+        for (; took <= 16; took += 2) { d1 = th.last && th.last.driver != null && T.peds ? T.peds.get(th.last.driver) : null; if (!d0 || !d1 || Math.hypot(d1.x - d0.x, d1.z - d0.z) >= 1) break; T.advance(2); }
         return { tries, stopped, entered, got, th, crime, in: T.player().vehicle, walked: d0 && d1 ? Math.hypot(d1.x - d0.x, d1.z - d0.z) : -1, state: d1 ? d1.state : null,
-          toasts: T.count('ui:toast'), subtitleAfter: T.cartheft().subtitle, errors: T.errors() };
+          toasts: T.count('ui:toast'), subtitleAfter, took, errors: T.errors() };
       });
       t.expect(r.stopped, '==', true, 'a driver stopped for Teo standing in the road');
       t.expect(r.entered, '==', true, 'he got into the stopped car');
@@ -203,9 +206,9 @@ export default [
       t.expect((r.th.last && r.th.last.text || '').length, '>=', 8, 'the driver said a line');
       t.expect(r.th.subtitle.startsWith('Driver: '), '==', true, 'the line was on screen as a subtitle');
       t.expect(r.subtitleAfter, '==', '', 'and is gone 4 s later');
-      t.expect(r.walked, '>=', 1, 'metres the driver walked in the next 4 s');
+      t.expect(r.walked, '>=', 1, 'metres the driver walked off within 16 s');
       t.expect(r.errors.length, '==', 0, 'errors');
-      t.note(`took a ${r.got && r.got.model} on try ${r.tries}; "${r.th.last && r.th.last.text}"; seen ${r.crime && r.crime.seen} by ${r.crime && r.crime.witnesses}; driver ${r.state}, walked ${r.walked.toFixed(1)} m`);
+      t.note(`took a ${r.got && r.got.model} on try ${r.tries}; "${r.th.last && r.th.last.text}"; seen ${r.crime && r.crime.seen} by ${r.crime && r.crime.witnesses}; driver ${r.state}, walked ${r.walked.toFixed(1)} m in ${r.took} s`);
     },
   },
   {

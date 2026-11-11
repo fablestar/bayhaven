@@ -73,6 +73,34 @@ Also: `state.peds`, `modules.peds` with a small crowd interface (`crowd`, `join`
 - Filming people do not step sideways for a clear view. No fame reactions. The queue at Ventanita Rosa and the towel crowds are not crowd objects (towels are two to four beachgoers spawned together).
 - No art requests were made.
 
+### D3-S3 · Garage (eight more vehicles, two wheels, a hop, a bus that shoves, and stealing a car with someone in it)
+
+**Shipped**
+
+Bayhaven's road fleet went from five models and a cab to thirteen and a cab. All eight new ones drive, park, turn up in traffic and can be taken.
+
+1. **Eight models** (`src/content/vehicles.js` holds the sheets as data, `models.js` builds them): Wahoo (muscle, two accent stripes down the hood, a scoop, side pipes), Sailfin (sports, the sail and a wing in the accent), Grouper (SUV, grey cladding, roof rails, a spare on the back), Manatee (city bus, 11.5 m, cream body, mango band, two kerb-side doors, twin rear wheels), Pinfish (scooter), Needlefish (motorcycle, tank and tail in the accent), Birdie (golf cart, canopy on four posts, two golf bags) and Flounder (lowrider, cream roof and skirts, a sun visor). Sizes, pieces, the six factory paints and stripe heights are the catalogue's. Handling rows are the bible's: drive, grip caps, pull.
+2. **Two wheels** (`handling.js`, `vehicle.js`, `fleet.js`). `lean = clamp(atan(vf × w / 9.81) × 0.9, ±0.75)`, drawn as roll with the wheels and the rider. The rider is eight boxes on the seat with hands on the bars; the shirt takes the stripe colour. A hit that changes speed by 5 m/s (7 on the Needlefish), or 0.4 s at over 0.9 rad of slip above 40 km/h, throws the rider: `rider:thrown`, the rider tumbles ahead for 1.2 s while the bike lies down and slides to rest at 8 m/s², then they are back on. Traffic scooters lean through their turns too, and have riders; a parked one has none and rests on its stand.
+3. **The Flounder hops** on `special` (Shift in a car): 4.2 m/s up, 0.53 m at the top, 0.48 s in the air, 0.6 s before the next. Hold left or right for a side hop, gas or brake to tip an end. `vehicle:hop` fires. **The Birdie** is 1.2 m wide with collision circles sized to it (so it fits where a car will not), has one gear, and its engine is 0.4 of a car's level. **The Manatee** wakes and shoves any car it leans on at over 0.4 m/s (other cars need a real hit), and at 9 tonnes barely slows.
+4. **Engines and horns by class** (`voice.js`, recipes in `src/content/vehicles.js`): eleven recipes across the fourteen ids. Waveform A, a second oscillator at its own ratio and gain, a sine sub on big engines, a low-pass that opens with revs, a level, the idle lope on the Wahoo and Flounder, a high-pass on the scooter, no gears on the cart. Each model has its own two horn notes: fast a fourth, trucks a fifth, the bus an octave (F2 and F3), two wheels a major second, the cart a minor second. Other drivers' horns are now heard: `traffic:honk` plays that model's horn, quieter with distance.
+5. **Taking a car from traffic** (`theft.mod.js`). A driver brakes for Teo standing in the road, and stays put while he is at their door. When he gets in, the driver gets out the far side as a person on the street, says one of the bible's 21 lines in a subtitle ("At least leave the beach towels!") and walks off along the sidewalk. Emits `crime { kind: 'cartheft', case: 'carjack', seen, witnesses, x, z, model }`, `vehicle:taken` and `ui:toast`.
+6. **District mixes**. A zone file's own `traffic` row is used as it stands (Tideline: scooters 4, buses 1, Sailfins, Groupers). A district with no zone file yet falls back to the bible's row for it (`DISTRICT_MIX`: Meridian gets buses and cabs, Mallard Greens gets carts, Palma Vieja gets lowriders, The Paintworks changes at night). Before this, a zone without a row gave every model the same weight.
+7. **Lights as separate pieces on every model**. The player's build has three unlit meshes: headlights (one on two wheels), a tail strip that brightens under braking, and four amber corner indicators (new) that blink at 1.5 Hz on the side being steered to under 50 km/h and are dull amber otherwise. Traffic draws the same pieces as instances, sized per model. Parked one-mesh cars carry the dull indicators too.
+
+Also: `test.ride()`, `test.traffic.mix()`, `test.traffic.models()`, `test.cartheft()`, `test.engineTone()`, `test.carvoice()`; a wheel list per model (two, or four with a width each, so twin rears are one wide wheel).
+
+**Not shipped**
+
+- **"If you finish early"**: neither. No random two-tone paint, no Sheriff or ambulance models.
+- **The Sound lane still plays the Heron's engine and horn under everything.** Engines live in `src/audio`, which I do not own. My class voice plays on top for every model not on the coupe recipe, so a scooter is a buzz over a quiet low hum, and the Birdie is not "nearly silent" to the ear: its own voice is at 0.4, the Heron hum under it is not. The player's horn is still the Heron's two notes for every model; the per-model notes are in `modules.vehicles.sounds` and are only heard from other drivers. Fix: the Sound lane reads `modules.vehicles.sounds[car.model]`, then `voice.js` and `voice.mod.js` are deleted.
+- **A thrown rider is drawn, not played.** Teo is not put on foot, nothing takes health (the event carries `damage` for whoever owns it), and after 1.2 s the rider is simply back on the seat.
+- **Sidewalks**: nothing stopped any car from mounting one before, and nothing does now. "Fits on sidewalks" is the Birdie's width, its small collision circles and a `sidewalk` flag on its preset; people do not step aside for it any differently than for a car.
+- **Hop extras**: a hop does not clear spike strips (there are none) and three hops in 2 s do not count as interesting to people filming.
+- **Two-tone paint by rule**: the Flounder's roof and skirts are cream on every paint, not "a second factory colour".
+- **Traffic lights and indicators**: traffic cars show indicators only while signalling (lit); unlit ones are not drawn, to save instances.
+- The Wahoo, Needlefish, Birdie and Flounder are in no built district's moving mix (their districts have no zone file yet). They are reachable as parked cars (not the Birdie) and through the test API.
+- No art requests were made.
+
 ## Day 2: Drift (day 2 headline)
 
 ### D2-S1 · Drift (day 2 headline)

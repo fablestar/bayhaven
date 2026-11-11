@@ -44,6 +44,9 @@ export function ready(id) {
   return p;
 }
 
+// Solve every preset now (at load), so the first car of a model to spawn costs nothing in a step.
+export function readyAll() { for (const id in PRESETS) ready(id); }
+
 export function createBody(preset) {
   return {
     preset, x: 0, z: 0, y: 0, h: 0, vf: 0, vl: 0, w: 0, steer: 0, gear: 0, shiftT: 0,
@@ -190,7 +193,7 @@ export function solveA(p) {
   let lo = 2, hi = 30;
   for (let i = 0; i < 24; i++) {
     const A = (lo + hi) / 2;
-    const r = straightRun({ ...p, A }, 60, vRef);
+    const r = straightRun({ ...p, A }, p.t100 + 1, vRef);      // no need to run past the time wanted
     if (r.speed >= vRef && r.time < p.t100) hi = A; else lo = A;
   }
   p.A = (lo + hi) / 2;

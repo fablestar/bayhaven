@@ -5,8 +5,10 @@ import { hash2 } from '../core/rng.js';
 import { MODEL_IDS, pickPaint } from './models.js';
 
 export const SPACE = 6, FILL = 0.3;
-// a cab on the curb is at a rank, not asleep; a bus is twice as long as a space; carts stay on the greens
-const PARKABLE = MODEL_IDS.filter((id) => id !== 'taxi' && id !== 'manatee' && id !== 'birdie');
+// What is found at the curb. No cab (it is at a rank, not asleep), no bus (twice as long as a
+// space), no cart (they stay on the greens). The fast ones are rare: about one space in twelve between them.
+const COMMON = ['heron', 'snook', 'tarpon', 'mullet', 'pompano', 'grouper', 'pinfish', 'flounder'], RARE = ['wahoo', 'sailfin', 'needlefish'];
+const PARKABLE = [...COMMON, ...COMMON, ...COMMON, ...COMMON, ...RARE].filter((id) => MODEL_IDS.includes(id));
 const unit = (h) => h / 4294967296;
 
 // The filled curb spaces of one chunk: [{ key, x, z, h, model, paint, accent, gone }]

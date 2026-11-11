@@ -3,7 +3,7 @@
 // Public object: { player (the vehicle the player is in), models (the presets by id), swap(model) }
 // plus spawn, despawn and near, added by the traffic module.
 import { createCar } from './vehicle.js';
-import { DT, PRESETS, straightRun, ready } from './handling.js';
+import { DT, PRESETS, straightRun, ready, readyAll } from './handling.js';
 import { pickPaint, sheet } from './models.js';
 import { SOUNDS } from '../content/vehicles.js';
 
@@ -16,6 +16,7 @@ export default {
   name: 'vehicles', order: 20, needs: ['world', 'props'],
   init(ctx) {
     const { world, props } = ctx.modules;
+    readyAll();
     const paint = PAINTS[ctx.params.get('clip') ? 0 : Math.floor(Math.random() * PAINTS.length)];
     car = createCar(ctx.scene, world, props, ctx.events, paint[0], paint[1]);
     car.reset(world.spawn);
