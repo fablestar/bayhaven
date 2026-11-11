@@ -28,10 +28,13 @@ export default {
         wrecks: traffic.wrecks.length, honks: traffic.honks, hits: traffic.hits, calls: fleet.calls, instances: fleet.instances }),
     };
     // what a model is: its numbers from the catalogue and the triangles in its traffic build
-    ctx.test.vehicleInfo = (id) => ({ id, name: sheet(id).name, triangles: triangles(id), bodyTriangles: fleet.bodies[id].tris, top: PRESETS[id].vTop * 3.6, t100: PRESETS[id].t100, mass: PRESETS[id].mass });
+    ctx.test.vehicleInfo = (id) => ({ id, name: sheet(id).name, wheels: sheet(id).wheels.length, lights: { head: sheet(id).head[0] ? 2 : 1, tail: 1, indicators: 4 }, triangles: triangles(id), bodyTriangles: fleet.bodies[id].tris, top: PRESETS[id].vTop * 3.6, t100: PRESETS[id].t100, mass: PRESETS[id].mass });
     // a chunk's curb spaces: how many there are and how many hold a parked car
     ctx.test.traffic.spaces = (cx, cz) => { const s = curbSpaces(m.map, cx, cz); return { spaces: s.total, filled: s.length }; };
     ctx.test.models = () => MODEL_IDS.slice();
+    // the mix a district's traffic is drawn from, and the models moving right now
+    ctx.test.traffic.mix = (district, hour = 12) => traffic.mixFor(m.map.zone ? m.map.zone(district) : null, district, hour);
+    ctx.test.traffic.models = () => { const n = {}; for (const c of traffic.cars) n[c.model] = (n[c.model] || 0) + 1; return n; };
     // stand a car of a model at a place: it is parked until something hits it
     ctx.test.placeVehicle = (model, x, z, h) => { const v = traffic.spawn(model, x, z, h); return { id: v.id, model: v.model, x: v.x, z: v.z }; };
     ctx.events.on('quality:changed', () => traffic.clear());

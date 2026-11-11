@@ -2,6 +2,8 @@
 // sideways speed and spin. No three.js in here, so it can be run and tuned on its own.
 // Follows plan/bible/systems/driving.md ("The step").
 
+import { PRESET_ROWS } from '../content/vehicles.js';
+
 export const DT = 1 / 60;
 export const GEAR_PULL = [1.30, 1.05, 0.92, 0.80];
 const UP = [0.30, 0.55, 0.78], DOWN = [0.24, 0.48, 0.70];
@@ -33,6 +35,7 @@ export const PRESETS = {
   pompano: preset('pompano', 120, 12, 2200, { capF: 13, capR: 14, a: 1.6, b: 1.6, hw: 1.0, hl: 2.6, lockMul: 0.85, steerRate: 5, pull: 2.0 }),
 };
 PRESETS.taxi = { ...PRESETS.tarpon, id: 'taxi' };      // the Bay Cab is a Tarpon in a yellow coat
+for (const id in PRESET_ROWS) { const [top, t100, mass, o] = PRESET_ROWS[id]; PRESETS[id] = preset(id, top, t100, mass, { ...o, fit: true }); }      // day 3's eight
 
 // A preset ready to drive: its pull solved once so 0 to 100 km/h takes the catalogue's time.
 export function ready(id) {
@@ -44,7 +47,7 @@ export function ready(id) {
 export function createBody(preset) {
   return {
     preset, x: 0, z: 0, y: 0, h: 0, vf: 0, vl: 0, w: 0, steer: 0, gear: 0, shiftT: 0,
-    slip: 0, slipSigned: 0, sR: 0, rearOut: false, acc: 0, mu: 1, wallHit: 0, braking: false, handbrake: false,
+    slip: 0, slipSigned: 0, sR: 0, rearOut: false, lean: 0, acc: 0, mu: 1, wallHit: 0, braking: false, handbrake: false,
     drift: { active: false, score: 0, mult: 1, held: 0, calm: 0, banked: 0 },
   };
 }
@@ -90,12 +93,12 @@ export function step(v, inp, env) {
   const tanD = Math.tan(v.steer * lock);
 
   // 2 engine, brakes, drag
-  updateGear(v, env.emit);
+  if (!p.oneGear) updateGear(v, env.emit);
   let acc = 0;
   v.braking = false;
   if (inp.gas > 0) {
     if (v.vf < -0.3) { acc = 20; v.braking = true; }
-    else acc = p.A * GEAR_PULL[v.gear] * Math.max(0, 1 - v.vf / p.vTop) * inp.gas;
+    else acc = p.A * (p.oneGear ? 1 : GEAR_PULL[v.gear]) * Math.max(0, 1 - v.vf / p.vTop) * inp.gas;
   }
   if (inp.brake > 0) {
     if (v.vf > 0.3) { acc = -24 * inp.brake; v.braking = true; }
@@ -130,6 +133,8 @@ export function step(v, inp, env) {
   v.w = (sF - sR + v.vf * tanD) / (p.a + p.b);
   v.vl = sR + v.w * p.b;
   v.sR = sR;
+  // two wheels lean into the turn: up to 0.75 rad, positive to the rider's left
+  if (p.two) v.lean = clamp(Math.atan(v.vf * v.w / 9.81) * 0.9, -0.75, 0.75);
   if (before > 5) {
     // a sliding car keeps most of its momentum
     const after = Math.hypot(v.vf, v.vl);

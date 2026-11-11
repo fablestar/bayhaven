@@ -3,15 +3,19 @@
 // frame the live cars are written into the front of each mesh; nothing is added to the scene later.
 import * as THREE from 'three';
 import { glowTexture } from '../gfx/builder.js';
-import { MODEL_IDS, sheet, trafficGeometry, paintMaterial, wheelGeometry, bodyMat } from './models.js';
+import { MODEL_IDS, sheet, trafficGeometry, paintMaterial, wheelGeometry, bodyMat, indicatorSpots } from './models.js';
+
+const spotCache = {}, spots = (id) => spotCache[id] || (spotCache[id] = indicatorSpots(id));
 
 const HEAD = [1, 1, 1], TAIL = [1, 0.08, 0.12], AMBER = [1.6, 0.9, 0.1];
 const col = new THREE.Color();
 
 export function createFleet(scene, cap) {
   const bodies = {};
-  for (const id of MODEL_IDS) {
-    const g = trafficGeometry(id), mesh = new THREE.InstancedMesh(g, paintMaterial(), cap);
+  const keys = [];
+  for (const id of MODEL_IDS) { keys.push([id, id, false]); if (sheet(id).rider) keys.push([id + '+rider', id, true]); }      // a two-wheeler with someone on it is its own mesh
+  for (const [id, model, rider] of keys) {
+    const g = trafficGeometry(model, rider), mesh = new THREE.InstancedMesh(g, paintMaterial(), cap);
     const accent = new THREE.InstancedBufferAttribute(new Float32Array(cap * 3), 3);
     g.setAttribute('accent', accent);
     mesh.setColorAt(0, col.set(0xffffff));
@@ -57,19 +61,25 @@ export function createFleet(scene, cap) {
       nw = nl = ns = 0;
       const blinkOn = (time * 1.5) % 1 < 0.5, far2 = wheelRange * wheelRange;
       for (let k = 0; k < cars.length; k++) {
-        const car = cars[k], b = bodies[car.model];
+        const car = cars[k], sh = sheet(car.model), b = bodies[sh.rider && car.ridden ? car.model + '+rider' : car.model];
         if (!b || b.n >= cap) continue;
-        const sh = sheet(car.model), c = Math.cos(car.h), s = Math.sin(car.h), i = b.n++;
+        const c = Math.cos(car.h), s = Math.sin(car.h), i = b.n++;
         put(b.m, i, car.x, car.y, car.z, car.h, 1, 1, 1);
+        if (sh.two) {
+          // lean: the up axis tips towards the rider's left by `lean` (a parked one rests on its stand)
+          const a = car.ridden ? car.lean || 0 : 0.14, o = i * 16, ca = Math.cos(a), sa = Math.sin(a);
+          b.m[o] = c * ca; b.m[o + 1] = -sa; b.m[o + 2] = -s * ca;
+          b.m[o + 4] = c * sa; b.m[o + 5] = ca; b.m[o + 6] = -s * sa;
+        }
         const p = linear(car.paint), a = linear(car.accent), ac = b.accent.array;
         b.c[i * 3] = p[0]; b.c[i * 3 + 1] = p[1]; b.c[i * 3 + 2] = p[2];
         ac[i * 3] = a[0]; ac[i * 3 + 1] = a[1]; ac[i * 3 + 2] = a[2];
         put(sm, ns++, car.x, car.y + 0.04, car.z, car.h, sh.W + 1.48, 1, sh.L + 1.74);
         // wheels: turned by the car's heading, spun about their axle
         const near = (car.x - camX) * (car.x - camX) + (car.z - camZ) * (car.z - camZ) < far2;
-        const spin = near ? car.spin : 0, ca = Math.cos(spin), sa = Math.sin(spin), r = sh.wheelR, w = sh.wheelW;
-        for (let j = 0; j < 4; j++) {
-          const lx = sh.wheels[j][0], lz = sh.wheels[j][1], o = nw++ * 16;
+        const spin = near ? car.spin : 0, ca = Math.cos(spin), sa = Math.sin(spin), r = sh.wheelR;
+        for (let j = 0; j < 4 && !sh.two; j++) {
+          const lx = sh.wheels[j][0], lz = sh.wheels[j][1], o = nw++ * 16, w = sh.wheelW * sh.wheels[j][2];
           wm[o] = c * w; wm[o + 1] = 0; wm[o + 2] = -s * w; wm[o + 3] = 0;
           wm[o + 4] = s * sa * r; wm[o + 5] = ca * r; wm[o + 6] = c * sa * r; wm[o + 7] = 0;
           wm[o + 8] = s * ca * r; wm[o + 9] = -sa * r; wm[o + 10] = c * ca * r; wm[o + 11] = 0;
@@ -77,13 +87,12 @@ export function createFleet(scene, cap) {
         }
         // lights: two headlights, one tail strip (bright while braking), indicators while signalling
         const hd = sh.head, tl = sh.tail, lit = car.parked ? 0.55 : 0.75 + night * 0.6;
-        light(car, c, s, hd[0], hd[1], hd[2] + 0.005, 0, 0.44, 0.11, HEAD, lit);
-        light(car, c, s, -hd[0], hd[1], hd[2] + 0.005, 0, 0.44, 0.11, HEAD, lit);
-        light(car, c, s, 0, tl[1], tl[2] - 0.005, Math.PI, tl[0], 0.13, TAIL, car.braking ? 1.7 : car.parked ? 0.45 : 0.5 + night * 0.35);
+        light(car, c, s, hd[0], hd[1], hd[2] + 0.005, 0, sh.hs[0], sh.hs[1], HEAD, lit);
+        if (hd[0]) light(car, c, s, -hd[0], hd[1], hd[2] + 0.005, 0, sh.hs[0], sh.hs[1], HEAD, lit);
+        light(car, c, s, 0, tl[1], tl[2] - 0.005, Math.PI, tl[0], sh.th, TAIL, car.braking ? 1.7 : car.parked ? 0.45 : 0.5 + night * 0.35);
         if (car.blink && blinkOn && near) {
-          const side = car.blink > 0 ? 1 : -1, x = side * (sh.bodyW / 2 + 0.012);      // +1 is a left turn; a car's left is its +x
-          light(car, c, s, x, hd[1], sh.L / 2 - 0.45, side * Math.PI / 2, 0.3, 0.12, AMBER, 1);
-          light(car, c, s, x, tl[1], -sh.L / 2 + 0.4, side * Math.PI / 2, 0.3, 0.12, AMBER, 1);
+          const side = car.blink > 0 ? 1 : -1, sp = spots(car.model);      // +1 is a left turn; a car's left is its +x
+          for (let j = side > 0 ? 0 : 2, e = j + 2; j < e; j++) light(car, c, s, sp[j][0], sp[j][1], sp[j][2], side * Math.PI / 2, sh.two ? 0.14 : 0.3, sh.two ? 0.1 : 0.12, AMBER, 1);
         }
       }
       for (const id in bodies) {

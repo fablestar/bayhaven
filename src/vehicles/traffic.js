@@ -5,7 +5,8 @@
 import { weighted } from '../core/rng.js';
 import { Vehicle } from './vehicle.js';
 import { SURFACES } from './handling.js';
-import { MODEL_IDS, pickPaint } from './models.js';
+import { MODEL_IDS, pickPaint, sheet } from './models.js';
+import { DISTRICT_MIX } from '../content/vehicles.js';
 import { startOn, drive, rejoin } from './drive.js';
 import { overlap, closing, resolve, bumpWorld } from './crash.js';
 import { curbSpaces } from './parked.js';
@@ -25,6 +26,15 @@ export function density(district, hour) {
   if (toNext < 0.25) return row[i] + (next - row[i]) * (0.5 - toNext * 2);
   if (fromPrev < 0.25) return row[i] + (prev - row[i]) * (0.5 - fromPrev * 2);
   return row[i];
+}
+
+// What drives in a place: the zone file's own `traffic` row if it has one, else the district's row
+// from the bible, else the common mix. Models that do not exist yet drop out.
+export function mixFor(zone, district, hour = 12) {
+  const night = hour >= 20 || hour < 5;
+  const row = (zone && zone.traffic) || (night && DISTRICT_MIX[district + '-night']) || DISTRICT_MIX[district] || DISTRICT_MIX.default, mix = {};
+  for (const id of MODEL_IDS) mix[id] = row[id] || 0;
+  return mix;
 }
 
 export function createTraffic({ map, nav, collide, chunks, signals, events, state, quality, camera, player, fleetCap }) {
@@ -80,9 +90,9 @@ export function createTraffic({ map, nav, collide, chunks, signals, events, stat
       for (const o of cars) if (Math.abs(o.x - x) < 16 && Math.abs(o.z - z) < 16) { clear = false; break; }
       for (const o of others) if (Math.abs(o.x - x) < 10 && Math.abs(o.z - z) < 10) { clear = false; break; }
       if (!clear) continue;
-      const zone = map.zoneAt(x, z), mix = {};
-      for (const id of MODEL_IDS) mix[id] = (zone && zone.traffic && zone.traffic[id]) || (zone && zone.traffic ? 0 : 1);
+      const zone = map.zoneAt(x, z), mix = mixFor(zone, (zone && zone.id) || state.world.district, state.clock ? state.clock.hour : 12);
       const c = make(weighted(rnd, mix));
+      c.ridden = true;
       c.vf = Math.min(l.speed * 0.8, Math.sqrt(2 * 2 * Math.max(0.5, l.len - s - 6)));
       startOn(c, l, s, nav, rnd);
       c.y = map.heightAt(c.x, c.z); c.born = d;
@@ -127,12 +137,12 @@ export function createTraffic({ map, nav, collide, chunks, signals, events, stat
     if (c.slot) { c.slot.gone = true; c.slot.car = null; drop(parked, c); c.slot = null; c.wasParked = true; }
     if (c.kind !== 'traffic') c.wasParked = true;
     drop(cars, c); drop(wrecks, c);
-    c.kind = 'loose'; c.parked = false; c.restT = 0; c.ai = null; c.blink = 0;
+    c.kind = 'loose'; c.parked = false; c.restT = 0; c.ai = null; c.blink = 0; c.lean = 0;
     loose.push(c);
   }
   function stepLoose(c, dt) {
     c.drive(BRAKES_ON, env);
-    c.braking = true; c.spin += (c.vf / 0.33) * dt;
+    c.braking = true; c.spin += (c.vf / sheet(c.model).wheelR) * dt;
     if (Math.hypot(c.vf, c.vl) > 0.3) { c.restT = 0; return; }
     c.restT += dt;
     if (c.restT < 3) return;
@@ -146,7 +156,8 @@ export function createTraffic({ map, nav, collide, chunks, signals, events, stat
     const h = overlap(a, b);
     if (!h) return;
     const cl = closing(a, b, h), free = b.kind === 'loose' || b.isPlayer;
-    const wake = !free && cl.dvB > 2 && loose.length < awakeCap;
+    // a bus (a `pusher`) shoves aside anything it so much as leans on
+    const wake = !free && (cl.dvB > 2 || (a.preset.pusher && !b.preset.pusher && cl.speed > 0.4)) && loose.length < awakeCap;
     if (wake) knock(b);
     const speed = resolve(a, b, h, !(free || wake));
     if (!free && !wake && b.kind === 'traffic' && cl.speed > 0.5) { b.vf *= 0.6; if (b.ai.honkT <= 0) { b.ai.honkT = 2.5; W.honk(b, 0.6); } }
@@ -155,7 +166,8 @@ export function createTraffic({ map, nav, collide, chunks, signals, events, stat
   }
 
   const traffic = {
-    cars, loose, parked, wrecks, all, enabled: true, honks: 0, hits: 0, target: 0,
+    cars, loose, parked, wrecks, all, enabled: true, honks: 0, hits: 0, target: 0, walkers: [], mixFor, taken: 0,
+    onTake: null,          // called with a traffic car just before it is taken off the street by hand
     get count() { return cars.length + loose.length; },
     density,
     firstSeen: () => firstSeen.slice(),
@@ -166,7 +178,7 @@ export function createTraffic({ map, nav, collide, chunks, signals, events, stat
       wrecks.push(v); collide.bodies.add(v);
       return v;
     },
-    despawn: remove,
+    despawn(v) { if (traffic.onTake && v.kind === 'traffic' && v.ai) traffic.onTake(v); remove(v); },
     near(x, z, r, out = []) { out.length = 0; for (const v of all) if ((v.x - x) * (v.x - x) + (v.z - z) * (v.z - z) <= r * r) out.push(v); return out; },
     clear(keepOff = false) {
       for (const v of all.slice()) remove(v);
@@ -181,6 +193,7 @@ export function createTraffic({ map, nav, collide, chunks, signals, events, stat
 
       // what a driver must brake for that is not in a lane
       others.length = 0; others.push(p);
+      for (const o of traffic.walkers) others.push(o);             // someone standing in the road (the player on foot)
       for (const c of loose) others.push(c);
       for (const c of wrecks) others.push(c);
 
@@ -196,7 +209,15 @@ export function createTraffic({ map, nav, collide, chunks, signals, events, stat
         const c = cars[i], d = Math.hypot(c.x - px, c.z - pz), ai = c.ai;
         if (d > RING.gone) { remove(c); continue; }
         const k = d < nearR ? 1 : d < 200 ? k1 : k2;
-        if (k === 1 || (frame + c.id) % k === 0) drive(c, dt * k, W, nav);
+        if (k === 1 || (frame + c.id) % k === 0) {
+          const h0 = c.h;
+          drive(c, dt * k, W, nav);
+          if (c.preset.two) {           // riders lean with the turn they are making
+            let dh = c.h - h0; if (dh > Math.PI) dh -= 6.2832; else if (dh < -Math.PI) dh += 6.2832;
+            const want = Math.max(-0.75, Math.min(0.75, Math.atan(c.vf * (dh / (dt * k)) / 9.81) * 0.9));
+            c.lean = (c.lean || 0) + (want - (c.lean || 0)) * Math.min(1, dt * k * 8);
+          }
+        }
       }
       // one car a step is asked "can the camera see you?"; unseen cars over the target, or stuck, go
       if (cars.length) {
@@ -237,7 +258,7 @@ export function createTraffic({ map, nav, collide, chunks, signals, events, stat
     list() {
       return all.map((c) => ({ id: c.id, model: c.model, x: c.x, z: c.z, h: c.h, v: Math.hypot(c.vf, c.vl), kind: c.kind,
         state: c.ai ? c.ai.state : c.kind, gapS: c.ai ? c.ai.gapS : null, red: !!(c.ai && c.ai.red), crossedRed: c.ai ? c.ai.crossedRed : 0,
-        lane: c.ai ? c.ai.lane.id : null, wait: c.ai ? c.ai.waitT : 0, born: c.born || 0, hw: c.hw, hl: c.hl, braking: !!c.braking, blink: c.blink || 0 }));
+        lane: c.ai ? c.ai.lane.id : null, wait: c.ai ? c.ai.waitT : 0, born: c.born || 0, hw: c.hw, hl: c.hl, braking: !!c.braking, blink: c.blink || 0, lean: c.lean || 0, ridden: !!c.ridden }));
     },
   };
   return traffic;

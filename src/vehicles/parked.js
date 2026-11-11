@@ -5,7 +5,8 @@ import { hash2 } from '../core/rng.js';
 import { MODEL_IDS, pickPaint } from './models.js';
 
 export const SPACE = 6, FILL = 0.3;
-const PARKABLE = MODEL_IDS.filter((id) => id !== 'taxi');      // a cab on the curb is at a rank, not asleep
+// a cab on the curb is at a rank, not asleep; a bus is twice as long as a space; carts stay on the greens
+const PARKABLE = MODEL_IDS.filter((id) => id !== 'taxi' && id !== 'manatee' && id !== 'birdie');
 const unit = (h) => h / 4294967296;
 
 // The filled curb spaces of one chunk: [{ key, x, z, h, model, paint, accent, gone }]

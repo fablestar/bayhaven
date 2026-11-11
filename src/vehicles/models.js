@@ -7,6 +7,7 @@
 
 import * as THREE from 'three';
 import { MeshBuilder } from '../gfx/builder.js';
+import { SHEETS as DAY3 } from '../content/vehicles.js';
 
 const DARK = 0x1b1924, GLASS = 0x16263c, STEEL = 0xc8ccd2, TYRE = 0x15141a, HUB = 0x9a9aa8, SPOKE = 0x2a2a34;
 export const WHEEL_R = 0.36;
@@ -32,7 +33,9 @@ const SHEETS = {
 // the Bay Cab: a Tarpon in yellow with a cyan stripe and a roof box
 SHEETS.taxi = { ...SHEETS.tarpon, name: 'Bay Cab', pieces: SHEETS.tarpon.pieces + ' sign:0.16x0.5x0.2@-0.18,1.46#ffa02e', paints: [0xffd23e], accent: 0x29e6ff };
 
-const RE = /^([a-z]+)(\/[fr]0?)?:([\d.]+)x([\d.]+)x([\d.]+)@(-?[\d.]+),([\d.]+)(x2)?(?:\|([\d.]+))?(?:#([0-9a-f]{6}))?$/;
+Object.assign(SHEETS, DAY3);       // day 3's eight, from src/content/vehicles.js
+
+const RE = /^([a-z]+)(\/[fr]0?)?:([\d.]+)x([\d.]+)x([\d.]+)@(-?[\d.]+),([\d.]+)(x2)?(?:\|(-?[\d.]+))?(?:#([0-9a-f]{6}))?(!)?$/;
 const parsed = new Map();
 export const MODEL_IDS = Object.keys(SHEETS);
 
@@ -42,17 +45,20 @@ export function sheet(id) {
   const s = SHEETS[id] || SHEETS.heron;
   const pieces = s.pieces.split(' ').map((tok) => {
     const m = RE.exec(tok);
-    return { name: m[1], mod: m[2] || '', L: +m[3], W: +m[4], H: +m[5], f: +m[6], y: +m[7], twin: !!m[8], x: m[9] ? +m[9] : 0, color: m[10] ? parseInt(m[10], 16) : null };
+    return { name: m[1], mod: m[2] || '', L: +m[3], W: +m[4], H: +m[5], f: +m[6], y: +m[7], twin: !!m[8], x: m[9] ? +m[9] : 0, color: m[10] ? parseInt(m[10], 16) : null, accent: !!m[11] };
   });
-  const W = pieces[0].W, L = pieces[0].L, tx = (W - 0.24) / 2, tz = s.base / 2;
-  const out = { ...s, id, pieces, W, L, wheels: [[tx, tz], [-tx, tz], [tx, -tz], [-tx, -tz]], wheelW: 0.83 * s.wheelR,
-    bodyW: Math.max(...pieces.filter((p) => !p.twin && p.name !== 'sill' && p.name !== 'chassis').map((p) => p.W)) };
+  const L = s.size ? s.size[0] : pieces[0].L, W = s.size ? s.size[1] : pieces[0].W, tz = s.base / 2;
+  const wheelW = (s.two ? 0.4 : 0.83) * s.wheelR, tx = (W - 0.24) / 2, rx = s.twinRear ? W / 2 - 0.85 * wheelW : tx, rw = s.twinRear ? 1.7 : 1;
+  // a wheel is [x, z, width multiplier]: two-wheelers have one each end, twin rears are one wide wheel
+  const wheels = s.two ? [[0, tz, 1], [0, -tz, 1]] : [[tx, tz, 1], [-tx, tz, 1], [rx, -tz, rw], [-rx, -tz, rw]];
+  const out = { ...s, id, pieces, W, L, wheels, wheelW, hs: s.hs || [0.44, 0.11], th: s.th || 0.13,
+    bodyW: s.bw || Math.max(...pieces.filter((p) => !p.twin && p.name !== 'sill' && p.name !== 'chassis').map((p) => p.W)) };
   parsed.set(id, out);
   return out;
 }
 export const WHEELS = sheet('heron').wheels;
 
-const FIXED = { sill: DARK, chassis: DARK, cabin: GLASS, screen: GLASS, sideglass: GLASS, mirrors: DARK, struts: DARK, bumper: STEEL };
+const FIXED = { sill: DARK, chassis: DARK, cabin: GLASS, screen: GLASS, sideglass: GLASS, glass: GLASS, mirrors: DARK, struts: DARK, bumper: STEEL };
 const SHADE = { doors: 0.9, tailgate: 0.92 };
 
 // One piece as a six-sided solid. Wedges drop their front or rear top edge; a cabin tapers as day 1's did.
@@ -70,7 +76,8 @@ const grey = (k) => mul(0xffffff, k);
 
 // Push a model's body into a builder. With paint given, colours are baked in. With paint null the
 // painted pieces are written white and `masks` gets, per vertex, 0 fixed, 1 paint, 2 accent.
-export function addModel(B, id, paint = null, accent = null, masks = null) {
+// opts.baked: a two-wheeler's wheels go into the mesh. opts.rider: someone is sitting on it.
+export function addModel(B, id, paint = null, accent = null, masks = null, opts = {}) {
   const s = sheet(id);
   const put = (mask, shade, fn) => {
     const from = B.count;
@@ -81,27 +88,71 @@ export function addModel(B, id, paint = null, accent = null, masks = null) {
     const fixed = p.color !== null ? p.color : FIXED[p.name];
     const opts = { bottom: p.name === 'sill' || p.name === 'chassis' || p.name === 'spoiler', noTop: p.name === 'cabin' };
     if (p.name === 'bed') opts.top = 0x3a3844;                       // the load floor
-    for (const x of p.twin ? [p.x, -p.x] : [0]) {
+    for (const x of p.twin ? [p.x, -p.x] : [p.x]) {
       if (fixed !== undefined) put(0, fixed, (c) => solid(B, p, x, c, opts));
-      else put(1, SHADE[p.name] || 1, (c) => solid(B, p, x, c, opts));
+      else put(p.accent ? 2 : 1, SHADE[p.name] || 1, (c) => solid(B, p, x, c, opts));
     }
   }
-  // the stripe: 0.07 tall on both sides, 0.006 outside the body, stopping 0.13 short of each end
-  const sx = s.bodyW / 2 + 0.006, z = s.L / 2 - 0.13, y0 = s.stripe, y1 = s.stripe + 0.07;
-  put(2, 1, (c) => {
-    B.quad([sx, y0, z], [sx, y0, -z], [sx, y1, -z], [sx, y1, z], c);
-    B.quad([-sx, y0, -z], [-sx, y0, z], [-sx, y1, z], [-sx, y1, -z], c);
-  });
+  // the stripe: 0.07 tall on both sides (0.30 on a bus), 0.006 outside the body, stopping 0.13 short of each end
+  if (s.stripe != null) {
+    const sx = s.bodyW / 2 + 0.006, z1 = s.stripeZ ? s.stripeZ[1] : s.L / 2 - 0.13, z0 = s.stripeZ ? s.stripeZ[0] : -z1, y0 = s.stripe, y1 = s.stripe + (s.stripeH || 0.07);
+    put(2, 1, (c) => {
+      B.quad([sx, y0, z1], [sx, y0, z0], [sx, y1, z0], [sx, y1, z1], c);
+      B.quad([-sx, y0, z0], [-sx, y0, z1], [-sx, y1, z1], [-sx, y1, z0], c);
+    });
+  }
+  // two stripes down the hood (the Wahoo), lying 0.006 above the wedge
+  if (s.hoodStripes) {
+    const h = s.pieces.find((p) => p.name === 'hood'), w = s.hoodStripes, zr = h.f - h.L / 2, zf = h.f + h.L / 2 - 0.02, yr = h.y + h.H + 0.006, yf = h.y + 0.6 * h.H + 0.006;
+    put(2, 1, (c) => { for (const x of [0.3, -0.3 - w]) B.quad([x, yr, zr], [x, yf, zf], [x + w, yf, zf], [x + w, yr, zr], c); });
+  }
+  if (opts.baked && s.two) for (const [x, z] of s.wheels) put(0, 1, () => addWheel(B, x, s.wheelR, z, s.wheelR, s.wheelW, 16));
+  if (opts.rider && s.rider) addRider(B, s.rider, put);
+}
+
+// A wheel written into a body mesh, with a spoke on each face.
+function addWheel(B, x, y, z, r, w, sides) {
+  B.cylX(x, y, z, r, w, TYRE, HUB, sides);
+  B.box(x + w * 0.51, y, z, 0.02, 1.4 * r, 0.28 * r, SPOKE); B.box(x - w * 0.51, y, z, 0.02, 1.4 * r, 0.28 * r, SPOKE);
+}
+
+// The rider of a two-wheeler: eight boxes, sat on the seat, leaning to the bars. The shirt takes
+// the stripe colour so riders differ; the helmet is cream.
+const SKIN = 0xc68a5e, DENIM = 0x2e4a6b, HELMET = 0xfdf6ea;
+export function addRider(B, r, put = (mask, shade, fn) => fn(mask === 0 ? shade : 0xff4fa8)) {
+  const y = r.y, z = r.z, fz = (r.barZ - z) * 0.3, t = 0.05;
+  const beam = (c, a, b, k) => B.hexa([[a[0] - k, a[1] - k, a[2]], [a[0] + k, a[1] - k, a[2]], [b[0] + k, b[1] - k, b[2]], [b[0] - k, b[1] - k, b[2]],
+    [a[0] - k, a[1] + k, a[2]], [a[0] + k, a[1] + k, a[2]], [b[0] + k, b[1] + k, b[2]], [b[0] - k, b[1] + k, b[2]]], c, { bottom: true });
+  put(2, 1, (c) => B.box(0, y + 0.27, z + 0.02, 0.34, 0.54, 0.22, c, { shift: [0, fz], bottom: true }));
+  put(0, HELMET, (c) => B.box(0, y + 0.68, z + 0.04 + fz, 0.25, 0.26, 0.27, c, { bottom: true }));
+  for (const s of [1, -1]) {
+    put(0, DENIM, (c) => beam(c, [s * 0.12, y + 0.05, z - 0.02], [s * 0.15, y + 0.02, z + 0.4], 0.07));
+    put(0, DENIM, (c) => beam(c, [s * 0.15, y - 0.36, z + 0.42], [s * 0.15, y - 0.36, z + 0.54], 0.06));
+    put(0, DENIM, (c) => B.box(s * 0.15, y - 0.17, z + 0.44, 0.11, 0.42, 0.12, c));
+    put(0, SKIN, (c) => beam(c, [s * 0.2, y + 0.46, z + fz + 0.05], [s * r.barX, r.barY + 0.03, r.barZ - 0.04], t));
+  }
 }
 
 // Light quads, baked (the player's car and one-mesh parked cars)
 export function addHeadlights(B, color, id = 'heron') {
-  const [x, y, z] = sheet(id).head;
-  for (const s of [1, -1]) B.quad([s * x - 0.22, y - 0.055, z], [s * x + 0.22, y - 0.055, z], [s * x + 0.22, y + 0.055, z], [s * x - 0.22, y + 0.055, z], color);
+  const sh = sheet(id), [x, y, z] = sh.head, w = sh.hs[0] / 2, h = sh.hs[1] / 2;
+  for (const s of x ? [1, -1] : [1]) B.quad([s * x - w, y - h, z], [s * x + w, y - h, z], [s * x + w, y + h, z], [s * x - w, y + h, z], color);     // two wheels have one
 }
 export function addTaillights(B, color, id = 'heron') {
-  const [w, y, z] = sheet(id).tail, x = w / 2;
-  B.quad([x, y - 0.065, z], [-x, y - 0.065, z], [-x, y + 0.065, z], [x, y + 0.065, z], color);
+  const sh = sheet(id), [w, y, z] = sh.tail, x = w / 2, h = sh.th / 2;
+  B.quad([x, y - h, z], [-x, y - h, z], [-x, y + h, z], [x, y + h, z], color);
+}
+// Where the four indicators sit: [x side, y, z] on the side faces at the corners. Left pair first.
+export function indicatorSpots(id) {
+  const sh = sheet(id), x = Math.max(sh.bodyW / 2, sh.two ? 0.2 : 0) + 0.012, zf = sh.two ? sh.head[2] - 0.12 : sh.L / 2 - 0.45, zr = sh.two ? sh.tail[2] + 0.12 : -sh.L / 2 + 0.4;
+  return [[1, sh.head[1], zf], [1, sh.tail[1], zr], [-1, sh.head[1], zf], [-1, sh.tail[1], zr]].map(([s, y, z]) => [s * x, y, z]);
+}
+// The four amber corner quads, 0.14 x 0.10, left pair first (so a mesh can light one side).
+export function addIndicators(B, color, id = 'heron') {
+  for (const [x, y, z] of indicatorSpots(id)) {
+    if (x > 0) B.quad([x, y - 0.05, z + 0.07], [x, y - 0.05, z - 0.07], [x, y + 0.05, z - 0.07], [x, y + 0.05, z + 0.07], color);
+    else B.quad([x, y - 0.05, z - 0.07], [x, y - 0.05, z + 0.07], [x, y + 0.05, z + 0.07], [x, y + 0.05, z - 0.07], color);
+  }
 }
 export const addBody = (B, paint, accent) => addModel(B, 'heron', paint, accent);
 
@@ -136,9 +187,10 @@ export function paintMaterial() {
 }
 
 // The traffic build of a model: one geometry with the paint mask on it.
-export function trafficGeometry(id) {
+// A two-wheeler's has its wheels in it, and `rider` adds the person on the seat.
+export function trafficGeometry(id, rider = false) {
   const B = new MeshBuilder(), masks = [];
-  addModel(B, id, null, null, masks);
+  addModel(B, id, null, null, masks, { baked: true, rider });
   const g = B.build();
   g.setAttribute('paintMask', new THREE.BufferAttribute(new Uint8Array(masks), 1));
   return g;
@@ -155,16 +207,17 @@ export function wheelGeometry(sides = 8) {
 // Triangles in the traffic build: body, four 8-sided wheels with spokes, seven light quads.
 export function triangles(id) {
   const B = new MeshBuilder();
-  addModel(B, id, 0xffffff, 0xffffff);
-  return B.triangles + 4 * 56 + 14;
+  addModel(B, id, 0xffffff, 0xffffff, null, { baked: true, rider: true });
+  return B.triangles + (sheet(id).two ? 4 + 8 : 4 * 56 + 14);
 }
 
 // A parked car: everything baked into one mesh, one draw call (day 1's five, and any hand-placed car).
 export function createParkedCar(paint, accent, id = 'heron') {
   const B = new MeshBuilder(), s = sheet(id);
-  addModel(B, id, paint, accent);
+  addModel(B, id, paint, accent, null, { baked: true });
   addHeadlights(B, 0xf4f0d8, id);
   addTaillights(B, 0xa01828, id);
-  for (const [x, z] of s.wheels) B.cylX(x, s.wheelR, z, s.wheelR, s.wheelW, TYRE, 0x8a8a96, 8);
+  addIndicators(B, 0x7a4a10, id);
+  if (!s.two) for (const [x, z, k] of s.wheels) B.cylX(x, s.wheelR, z, s.wheelR, s.wheelW * k, TYRE, 0x8a8a96, 8);
   return new THREE.Mesh(B.build(), bodyMat);
 }
