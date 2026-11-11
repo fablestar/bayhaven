@@ -30,7 +30,8 @@ export function createPeds({ map, nav, collide, signals, events, state, cap, rop
   // ---- spawning ----
   function add(kind, x, z, h, opts = {}) {
     if (list.length >= sim.cap) return null;
-    const K = KINDS[kind], look = opts.look || dress(kind, rnd);
+    const K = KINDS[kind], look = dress(kind, rnd);
+    if (opts.shirt && look.shirt !== look.skin) { if (look.arm === look.shirt) look.arm = opts.shirt; look.shirt = opts.shirt; }     // a crowd in one colour
     const p = { id: nextId++, slot: list.length, kind, K, look, x, y: ground(x, z), z, h, v: 0, phase: rnd() * 6, seed: rnd(), nerve: rnd(), rolls: !!K.rolls,
       state: 'walk', sub: null, st: 0, timer: 0, face: FACE.neutral, mode: 'free', edge: null, dir: 1, s: 0, off: 0.2 + rnd() * 0.7, tx: x, tz: z,
       goal: 80 + rnd() * 220, hold: null, jay: false, frozen: 0, annoyed: 0, slow: 0, gaze: 0, t0: 0, show: 0, rope: null, crowd: null, heard: 0,
@@ -147,11 +148,18 @@ export function createPeds({ map, nav, collide, signals, events, state, cap, rop
     const carNear = (r, fast) => { for (const c of cars) if (Math.hypot(c.vf, c.vl) > fast && Math.hypot(c.x - p.x, c.z - p.z) < r) return true; return false; };
     if (ph) {
       const axis = Math.abs(e.bx - e.ax) > Math.abs(e.bz - e.az) ? 'ew' : 'ns';
-      if (ph[axis] === 'green' && signals.phase(e.node, signals.time + 4)[axis] === 'green') return true;
+      // the walk light is the green of the road beside them, less its last 4 s; they set off only
+      // if they can be across before it ends, and jog when it is going to be close
+      if (ph[axis] === 'green') {
+        let left = 1; while (left < 40 && signals.phase(e.node, signals.time + left)[axis] === 'green') left++;
+        const need = e.len / Math.max(0.5, left - 1.5);
+        if (left > 4 && need <= p.K.flee) { p.crossV = Math.max(p.K.walk * 1.2, need); return true; }
+      }
       if (p.jayRoll === undefined) p.jayRoll = rnd() < p.K.jay;
-      if (p.jayRoll && !carNear(40, 0.5)) { p.jay = true; sim.stats.jaywalks++; return true; }
+      if (p.jayRoll && !carNear(40, 0.5)) { p.jay = true; p.crossV = 0; sim.stats.jaywalks++; return true; }
       return false;
     }
+    p.crossV = 0;
     return !carNear(12, 3);
   }
   function nextEdge(p) {
@@ -176,9 +184,7 @@ export function createPeds({ map, nav, collide, signals, events, state, cap, rop
     if (p.mode === 'edge') {
       let v = base;
       if (p.state === 'cross') {
-        v = base * 1.2;
-        const ph = signals && signals.phase ? signals.phase(p.edge.node) : null;
-        if (ph && ph[Math.abs(p.edge.bx - p.edge.ax) > Math.abs(p.edge.bz - p.edge.az) ? 'ew' : 'ns'] !== 'green') v = Math.max(v, p.K.flee * 0.7);   // the amber caught them
+        v = Math.max(base * 1.2, p.crossV || 0);
       }
       p.v = v; p.s += v * dt; p.goal -= v * dt;
       if (near && p.want !== undefined) p.off += (p.want - p.off) * Math.min(1, dt * 2);

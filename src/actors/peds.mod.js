@@ -3,7 +3,7 @@
 // from cars and get knocked over. Work is in peds.js (who and where), pedsreact.js (filming, horn),
 // pedsdraw.js (the eight meshes), pedspose.js (angles), pedstumble.js (the rope), pedskinds.js (data).
 // Public object: { count, list, kinds, stats(), add(kind, x, z, h, opts), remove(p), crowd(def), disband(crowd),
-//   release(p, how, x, z), near(x, z, r), trigger(seconds, 'crash' or 'stunt'), freeze(seconds, range), filming, interest }.
+//   join(crowd, kind, x, z, h, shirt), hold(crowd, p), release(p, how, x, z), near(x, z, r), trigger(seconds, 'crash' or 'stunt'), freeze(seconds, range), filming, interest }.
 // Owns state.peds = { count, filming, interest, down }. Emits ped:hit, ped:filming, ped:fled, ped:gotup.
 // ?peds=0 starts with nobody about. People arrive with the day 3 build.
 import * as THREE from 'three';
@@ -65,8 +65,10 @@ export default {
       freeze: (seconds, range) => sim.react.freeze(seconds, range),
       // A crowd owns its members: they have no brain until it lets them go. def: { id, x, z, streetCap }.
       crowd(def) { const c = { members: [], beat: 0, ...def }; sim.crowds.push(c); return c; },
-      join(c, kind, x, z, h, look) { const p = sim.add(kind, x, z, h, { crowd: true, look }); if (p) { p.crowd = c; p.beat = 0; sim.setState(p, 'crowd'); c.members.push(p); } return p; },
+      join(c, kind, x, z, h, shirt) { const p = sim.add(kind, x, z, h, { crowd: true, shirt }); if (p) { p.crowd = c; p.beat = 0; sim.setState(p, 'crowd'); c.members.push(p); } return p; },
       disband(c) { const i = sim.crowds.indexOf(c); if (i >= 0) sim.crowds.splice(i, 1); for (const p of c.members) if (!p.gone && p.state === 'crowd') sim.remove(p); c.members.length = 0; },
+      // take back a member who was let go to film
+      hold(c, p) { if (p.gone || p.rope || p.state === 'dazed' || p.state === 'getup') return false; p.crowd = c; p.street = false; p.face = 0; sim.setState(p, 'crowd'); return true; },
       // let one member go: 'flee' from (x, z), 'film' the player, or just 'walk' off
       release(p, how, x, z) {
         if (p.gone || p.state !== 'crowd') return;
