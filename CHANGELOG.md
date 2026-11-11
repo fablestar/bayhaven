@@ -85,6 +85,37 @@ The map grew from one block to all of Tideline: 3.2 km of beachfront, 0.45 km de
 - **Ordering in the pump is by chunk, not by lot**, and lanes are built once for the whole map instead of per chunk.
 - No art requests were made.
 
+### D2-S4 · Traffic (cars on every street, lights, crashes, parked cars)
+
+**Shipped**
+
+Bayhaven has other drivers now. They follow the lanes, queue at red lights, take turns at junctions, honk when you cut them off and get shoved down the road when you hit them.
+
+1. **One vehicle class** (`vehicle.js`, `handling.js`). `Vehicle` is the body the player's car and every traffic car share, driven by a preset per model: top speed, time to 100 km/h and mass from the plan, plus grip, axle and box sizes. The pull of each model is solved so its 0 to 100 time matches the catalogue. The player can be put in any model (`modules.vehicles.swap`); it is the same object, so the camera and HUD keep their hold.
+2. **Five models from the bible's sheets** (`models.js`): Snook, Tarpon, Mullet, Pompano and the Bay Cab, plus the Heron rebuilt from its sheet (same shape as day 1). A sheet line like `hood/f:1.25x1.79x0.46@1.67,0.44` is read straight into boxes and wedges. One mesh per model serves every colour: each vertex carries a mask (fixed, paint or accent) and the instance carries the two colours. Six factory colours a model; the stripe colour follows the paint (ink on pale, cyan on warm, pink on the rest).
+3. **Traffic on rails** (`traffic.js`, `drive.js`). Cars follow the lanes from `nav`, use the bible's following rule (2 seconds plus 2.5 m), brake for the car ahead, for a red or amber line, and for anything in a 20 m path that is not in a lane (you, a car knocked loose). At a junction a car picks a legal turn (straight 0.6, right 0.2, left 0.2; a cab likes avenues twice as much) and follows a curve to it. Rules built: lights; a full second at a stop line, then first in, first out; side streets wait for the main road; left turns wait for a 4 second gap; nobody enters a junction whose exit lane is full; two cars share a junction only if their paths do not meet.
+4. **Spawning** 120 to 260 m away where the camera cannot see (outside the view cone widened by 10 degrees, or behind a building, or at the far edge of an open road), 65% of picks ahead of where you are going, at most one a step. Removed past 320 m, or when out of view and over the target. Far cars are stepped every 2nd to 8th step.
+5. **Lights** (`src/systems/signals.js`). Every junction where two big roads cross runs a 30 second cycle from the bible's table (12/2/1 twice, or 15/2/1 and 9/2/1, or 17 and 7), offset as a green wave. A pole with three lamps stands at each stop line near the player: two draw calls for all of them, with a small collision box each.
+6. **Car against car** (`crash.js`): a separating-axis test on two turned boxes, a push apart split by inverse mass, an impulse with restitution 0.25 and a little yaw from off-centre hits. A traffic or parked car hit hard enough to change its speed by 2 m/s wakes into a full physics body (the same handling step as the player), brakes, and after 3 s at rest drives back into its lane if it can. A lighter tap leaves it where it is and it honks.
+7. **Honk and swerve.** A driver with under 1.2 s to impact brakes at 8 m/s², leans away from you inside its lane and honks (`traffic:honk`). A driver stuck behind you for 4 s honks again.
+8. **Parked cars** (`parked.js`): 6 m curb spaces down both sides of every road piece, 30% filled from the chunk's seed, any of five models. The nearest 24 (`low`) or 60 (`high`) are real vehicles you can ram.
+9. **Rush hour and the quiet hour**: the bible's Tideline row (10, 19, 40, 32, 40, 31 out of 40 by hour band), eased over 30 game minutes at each edge. That is noon × 1.25 capped at the cap for the rushes and × 0.31 at 03:00.
+10. **From the "if you finish early" list:** brake lights on every traffic car, and indicators that blink at 1.5 Hz from 32 m before a turn until it is done.
+
+**Not shipped**
+
+- **No sound for traffic.** `traffic:honk` and `vehicle:crash { what: 'vehicle' }` are emitted; the crash thump plays (audio already listens to `vehicle:crash`), the horn does not (audio is not my folder).
+- **No lane changes.** A car takes a turn its lane allows, so it never needs one, but nobody overtakes.
+- **No right turn on red, no dirt-track passing, no Spire Circle or ramp rules** (none of those roads exist yet).
+- **States not built:** pulled over, panic, rubberneck, driverless, bailing out. They need sirens, weapons and people.
+- **Parked cars have no alarms and do not use the static collision hash**: they are bodies in `collide.bodies`, and only vehicles test against them.
+- **Traffic does not knock props over.** A traffic car drives through a Drift Night cone without moving it (so it cannot spoil the player's cone count).
+- **No headlight beams on traffic at night**, no number plates, no hero build with separate panels, no cheaper far build (every car uses the traffic build at every distance).
+- **Only Tideline has its own density row**; other districts use one default row until they exist. Weather does not change the count yet.
+- **The Sheriff Tarpon in the mix, ambulances and timetabled vehicles** (tier C or later days).
+- **`nav.green()` and `signals.state()` disagree**: nav has the older two-phase rule. Cars use `signals`. Whoever builds people crossing should use `modules.signals.state(lane)` or `phase(nodeKey)`.
+- No art requests were made.
+
 ## Day 1: A block, a car, a sunset: the block comes alive (2026-11-11)
 
 ### D1-S1 · A block, a car, a sunset: the block comes alive (2026-11-11)
