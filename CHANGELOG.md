@@ -2,6 +2,42 @@
 
 Built from the notes in `changelog/` by `tools/changelog.mjs`. Newest day first.
 
+## Day 3: On foot (Teo gets out of the car)
+
+### D3-S1 · On foot (Teo gets out of the car)
+
+**Shipped**
+
+You can get out of the car. Press F and Teo steps out, walks, sprints, jumps, wades into the sea, and gets into any stopped car on the street.
+
+1. **The rig** (`src/actors/rig.js`, `rigart.js`). A six-box toy person, 1.8 m tall, no knees or elbows, with the bible's boxes and pivots. Faces, shirt, sleeve and leg are drawn on one 256 × 128 canvas: all eight face cells of the bible's table (neutral, happy, shocked, angry, squint, dizzy, blink, talk). Poses are maths, straight from the bible's table: walk, jog and sprint on one formula (phase, swing, bob, lean, twist, roll into turns), idle (breath, sway, looks round, blinks), jump (crouch, arms up, arms out), fall, sit, driving, getting in or out, the bail-out roll, getting up, wading. A change of pose blends over 0.15 s.
+2. **Teo** by his sheet: dark roots with the bleached block on top, the open cyan floral shirt over a white tank, the ink harness with its cross on the back, the chest phone on a stalk, the battery box with a pink light (a glow at night), violet board shorts with a white stripe, white socks and ink slides, two shirt tails that lift with speed and trail a turn. 16 boxes. His walk is the bible's "bouncy": swing × 1.15, bob × 1.5.
+3. **On foot** (`player.js`). Walk 1.6, jog 3.4, sprint 6.8 m/s. 12 s of sprint, then a jog until Shift is let go; a full refill takes 6 s. A jump of 1.1 m (measured: 1.10) after a 0.08 s crouch. A circle of radius 0.35 m against the collision hash and against cars: he slides along walls, steps up anything 0.35 m or lower (curbs, the promenade), walks down the beach and wades at 1.2 m/s to 0.9 m deep, where he stops. Movement is relative to the camera.
+4. **In and out of vehicles** (`doors.js`). F within 2.5 m of a door: he walks to the door and slides onto the seat in 0.8 s. Out the same way, by the driver's door, or the other one when a wall is in the way. Any stopped vehicle works: parked cars, cars you knocked loose, traffic waiting at a light. The car he leaves stays parked where he left it. Above 30 km/h he bails: full rolls along the road until the speed is gone (10 m from 61 km/h), then 1.2 s to get up, while the empty car brakes itself to a stop.
+5. **Camera** (`camera.js`). On foot: 4.5 m back, 1.7 m up. Mouse drag, a finger on the picture or the right stick orbits. After 2 s of running with the view left alone it swings round behind him. A wall between him and the camera pulls it in (a ray through the collision hash). Getting out and in glides between the car camera and the foot camera over 0.7 s.
+6. **State and events.** `state.player.mode` is `'car'` or `'foot'` (it was `'vehicle'`). `vehicle:exited`, `vehicle:entered`, `player:spawned`, plus `player:jumped`, `player:landed` and `player:step` (one a stride, with the surface under him: the hook for footsteps by surface).
+7. **Input** (`src/core/input.js`). A foot mode: the same keys and script holds walk instead of drive, Space jumps, Shift sprints, the car gets nothing. Camera turning from mouse, touch and the right stick. Scripts can press a button and turn the camera, which is how the clip is written.
+8. **Touch** (`foottouch.js`, a stand-in for the HUD session). On foot: a left stick, Jump, Sprint, and Get in when a door is in reach. In a car the driving layout is back with a Get out button. 72 px buttons, inside the safe areas, no overlaps in portrait or landscape.
+9. **Test API:** `test.exit()`, `test.enter()`, `test.spawnVehicle(model, at)` (on foot it stands a parked car beside him), `test.foot()`, `test.rig(pose, seconds)`.
+10. **Clip** `?clip=day-3`: 18:00. The coupe pulls up by the promenade, he gets out on the sea side at 3.8 s, the view swings round to the water and he walks onto the sand by 9.7 s. 12 seconds.
+
+**Day 2 checks brought up to date (asked for at the top of this session):**
+
+- `D2-S1.3` drives into the barrier at the real map edge: the place comes from the map's east bound (x 1593), the sections found there stand at x 1590, one is knocked over and the car is held at the edge.
+- `D2-S2.4` asks the old promises of the real network: 782 lanes, equal to the lane count of all 353 road pieces counted from the map; keep right; every lane leads on; each of the one-lane T-junctions offers exactly two ways on; nobody is turned back unless the road truly ends (0 dead ends today, 0 turn-backs); no lane lies on any of the 50 barrier stubs; the route is between 1.0 and 1.3 times the grid distance.
+- `D2.4`'s "9 chunks built during the drive" was a time budget in disguise (the streamer works once a frame inside a budget of real milliseconds). It is now two things. Counted while the car moves: 9 scaled by the share of 60 frames a second this machine drew and by k. Counted per distance: once the car has stopped and the streamer has caught up, at least 9 chunks built for the metres driven and nothing owed, with no clock on it. Also new: more building frames than chunks (proof of slices). The millisecond limits are unchanged.
+- `D2-S1.3` and `D2-S1.6` now open with `day=2`. This note makes the build "day 3", and Drift Night's cones are day 2's drop, so without the pin both would fail from today for a reason that is not the game's.
+
+**Not shipped**
+
+- **The ten people on the beach and footstep sounds** ("if you finish early"). The `player:step` event carries the surface; nothing plays it (audio is not my folder).
+- **Climbing and swimming.** Not in this session's list. He stops at waist depth.
+- **Taking a moving car.** Only vehicles under 1.5 m/s can be entered; pulling a driver out belongs to the garage session.
+- **Teo is not drawn inside the car.** The rig is hidden in a vehicle. The sit and driving poses exist and are checked, but nothing shows them yet.
+- **Mags as a body.** Only `teo` has a look. `state.player.id` is now `teo`.
+- **The page title and the hint in `index.html` still say day 2** (not my file). The stand-in adds the new keys to the hint line at load.
+- No art requests were made.
+
 ## Day 2: Drift (day 2 headline)
 
 ### D2-S1 · Drift (day 2 headline)

@@ -105,7 +105,7 @@ export default [
   {
     id: 'D2-S1.3', name: 'Hits: sparks, shake, knocked-over props',
     async run(t) {
-      const page = await t.open();
+      const page = await t.open('&day=2');          // Drift Night is day 2's drop: later build days do not build its cones
       const r = await page.evaluate(async () => {
         const G = window.__game, T = G.test;
         // into the building on the north side of the beachfront street
@@ -246,7 +246,7 @@ export default [
   {
     id: 'D2-S1.6', name: 'Drift Night drop',
     async run(t) {
-      const page = await t.open();
+      const page = await t.open('&day=2');          // Drift Night is day 2's drop: later build days do not build its cones
       const r = await page.evaluate(() => {
         const G = window.__game, T = G.test;
         T.teleport(50, -85, 0);
