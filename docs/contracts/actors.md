@@ -27,3 +27,35 @@ Events I listen to: `input:press` (`interact` gets out or in; `camera` in a car)
 Stand-ins I left: `foottouch.js` is a STAND-IN for the on-foot part of `src/ui/touch.js`: a left stick (`#foot-stick`), `Jump`, `Sprint`, a `Get in` button shown by a door and a `Get out` button in a car, made in code, with `body.on-foot` hiding `#touch`. It also adds the new keys to the hint line. The HUD session should take it over and delete the file.
 
 Not built yet: climbing ledges, swimming (he stops at 0.9 m deep), taking a moving car from traffic (only vehicles under 1.5 m/s can be entered), a passenger seat, Mags as a body, `giveWeapon`, `setOutfit`, `freeze`, the driving pose seen through the car's glass (the rig is hidden in a car).
+
+## People (session D3-S2: `peds*.js`)
+
+| Name | Signature | Meaning |
+|---|---|---|
+| modules.peds | `count` · `list` (the live people; read, never write) · `filming` · `interest` · `paused` · `kinds` · `numbers` · `stats()` · `info(p)` · `add(kind, x, z, h, opts) → person or null` · `remove(p)` · `near(x, z, r, out)` · `trigger(seconds, 'crash' or 'stunt', x, z)` · `freeze(seconds, range) → count` · `crowd(def)` · `join(crowd, kind, x, z, h, shirt)` · `hold(crowd, p)` · `release(p, 'flee', 'film' or 'walk', x, z)` · `disband(crowd)` | Everyone on the street. Owns `state.peds = { count, filming, interest, down }` (`down` is always 0: see below). With a build day under 3, or `?day=1`, it is `{ disabled: true, count: 0 }`. `?peds=0` starts with spawning paused |
+| a person | `id kind K (the kind's row) look x y z h v state sub st timer face street crowd frozen rope gone` | `state`: `walk cross hang flee film dodge fall dazed getup crowd`. `sub` while hanging out: `sit lean chat sunbathe phone look shout wave`. `face` is a cell of the rig's face sheet (0 neutral, 1 happy, 2 shocked, 3 angry, 4 squint, 5 dizzy) |
+| a kind (`pedskinds.js`, `KINDS`) | `label walk flee courage films hours jay where spot shirt shirts arm leg legs hair hats hat bags bag side horn crash stunt` | The eight of plan/04 section 6: `tourist jogger retiree skater office docker clubber beachgoer`. `side horn crash stunt` are codes from the bible's reaction table. Also `TARGETS`, `targetFor(district, hour)`, `mixFor(zone.peds, district, hour)`, `dress(kind, rnd)` |
+| a crowd | `{ id, x, z, streetCap, members, beat }` from `peds.crowd(def)` | Members are in state `crowd`: they have no brain, the crowd's owner moves them and sets `p.beat`; the dance is drawn from `beat` (104 beats a minute, four moves of two beats). While a crowd is within 150 m the street target drops to its `streetCap` |
+| pedsdraw.js | `createPedDraw(scene, cap)` → `dress(i, look)` · `pose(i, p, angles, groundY, night)` · `rope(i, p, rope, groundY)` · `birds(x, y, z, t)` · `hide(i)` · `begin()` · `end(n, night)` · `calls` · `meshes` · `shadows` · `atlas` | Eight draw calls: head, torso, two arms, two legs, one mesh of unit boxes (hair, hats, bags, phones, birds) and blob shadows. Seven share one material and the 256 x 128 people atlas; each instance has `aTint`, `aSkin` and `aCell`. Capacity 192 / 224 / 256 by quality |
+| pedspose.js | `poseFor(p, t, out, far)` · `dance(out, beat)` · `DANCE` | Angles for every state. No three.js |
+| pedstumble.js | `startRope(x, y, z, h, scale, vx, vz)` · `stepRope(rope, dt, groundAt) → done` · `TUMBLE` | The ten-point rope (bible/tech/algorithms.md section 8). The bible names this file `tumble.js`; it is `pedstumble.js` because this session owned `peds*.js` |
+
+Test API entries: `test.peds.stats()` → `{ count, within, street, target, cap, streetCap, calls, filming, interest, down, byState, byKind, frozen, crowdScale, gained, ms, drawMs, triangles, hits, dodges, spawned, fled, waits, jaywalks }` · `test.peds.list(radius)` · `test.peds.get(id)` · `test.peds.spawn(kind, x, z, h, { state, sub, seconds })` · `test.peds.clear()` · `test.peds.auto(on)` · `test.peds.fill()` · `test.peds.trigger(seconds, code)` · `test.peds.freeze(seconds, range)` · `test.peds.show(on)` · `test.peds.mix(district, hour)` · `test.peds.target(district, hour)` · `test.peds.pose(id)` · `test.peds.kinds()`.
+
+Events people emit:
+
+| Event | Data |
+|---|---|
+| `ped:hit` | `{ speed, kmh, x, z, kind, id, by: 'player' or 'traffic' }`; speed in m/s, for a vehicle at 10 km/h or more |
+| `ped:gotup` | `{ id, kind, x, z }` when someone knocked over is on their feet again (new name; the barks session's "getting up" line can hang on it) |
+| `ped:filming` | `{ count }`, at most twice a second, when the number of phones up changes |
+| `ped:fled` | `{ count }`, people who started running since the last one |
+| `peds:rebuilt` | `{}` after a quality change emptied the street and rebuilt the meshes; a crowd's owner forms it again |
+
+Events people listen to: `vehicle:crash`, `drift:start`, `drift:end`, `jump:landed`, `vehicle:blast`, `prop:broken` (kind `hydrant`), `weapon:fired` (everyone within 60 m runs), `player:ability` (an id with `voice` or `horn` in it freezes people within 30 m for 5 s), `weather:changed`, `quality:changed`, `game:reset`. The horn is read from `input.actions.horn` while he is in a car.
+
+People also add to `state.economy.followers`: 5 a second for each phone up while something is worth filming, times `crowdScale` (60 / pedCap), plus viewers / 100 a second at heat 3 and above. No other module does this yet; the heat or economy session may take it over.
+
+Stand-ins: none.
+
+People, not built yet: the `down` state, health and ambulances (a hit at any speed is a tumble and a get-up), cars stopping for people (traffic's job), people as solid bodies against the player on foot, stepping up to 8 m for a clear view while filming, fame reactions, barks, running for an awning, the queue and towel crowds as crowd objects (towels are just two to four beachgoers spawned together), per-chunk despawn.
