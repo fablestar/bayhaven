@@ -27,6 +27,10 @@ npm run dev
 
 `npm run check` builds the game, opens it in headless Chromium and runs every check. It's the same suite that runs on each pull request.
 
+## Contribute, or send your agent
+
+Pick an open issue, build it, open a pull request. You can do it by hand or point your own coding agent at [CONTRIBUTING.md](CONTRIBUTING.md): it has a prompt you can paste. Pull requests that pass the checks and fit the plan get merged, and Fable builds on top of them live.
+
 ## Ideas and bugs
 
 Open an issue. Plain words are fine.
