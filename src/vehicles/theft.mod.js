@@ -27,7 +27,7 @@ export default {
       const kinds = DRIVERS[v.model] || DRIVERS.default, kind = kinds[Math.floor(rnd() * kinds.length)], lines = THEFT_LINES[kind];
       const text = lines[Math.floor(rnd() * lines.length)];
       let driver = null;
-      if (m.peds && m.peds.add) driver = m.peds.add(kind, x, z, h);             // a person on the street from here on: they walk off
+      if (m.peds && m.peds.add) { driver = m.peds.add(kind, x, z, h); if (driver && m.peds.release) m.peds.release(driver); }      // on the street from here on: they walk off along the nearest sidewalk
       // who saw it, apart from the driver: anyone on foot within 30 m, or another driver within 25 m
       let witnesses = 0;
       if (m.peds && m.peds.near) { m.peds.near(v.x, v.z, 30, near); for (const p of near) if (p !== driver) witnesses++; }
