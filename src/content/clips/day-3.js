@@ -2,7 +2,7 @@
 // and walks down onto the beach. 12 seconds. The crowd he walks into arrives with the pedestrians.
 
 export default {
-  id: 'day-3', seconds: 12, hour: 18.4, weather: 'clear', vehicle: 'heron', camera: 'chase',
+  id: 'day-3', seconds: 12, hour: 18.0, weather: 'clear', vehicle: 'heron', camera: 'chase',
   at: { x: 19, z: 41.6, heading: -Math.PI / 2 },         // facing west, so the driver's door opens towards the sea
   inputs: [
     { t: 0, hold: ['gas'] },

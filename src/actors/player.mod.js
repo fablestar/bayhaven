@@ -68,6 +68,7 @@ export default {
       get: sync,
       nearest: () => (mode === 'foot' && !doors.act ? doors.nearest() : null),
       get stamina() { return me.stamina / FOOT.stamina; },
+      get inputMode() { return ctx.input.mode; },
       // in a car this moves the car (day 2's meaning); on foot it moves him
       teleport(x, z, heading, level = 0, speed = 0) {
         if (mode === 'car') car.reset({ x, z, h: heading ?? car.h, vf: speed });

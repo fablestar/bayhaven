@@ -126,7 +126,7 @@ export function createFoot({ map, collide, vehicles, events }) {
         if (wading) { want = Math.min(want, FOOT.wade); me.sprinting = false; }
       }
       if (me.sprinting) { me.stamina = Math.max(0, me.stamina - dt); if (me.stamina === 0) me.tired = true; }
-      else { me.stamina = Math.min(FOOT.stamina, me.stamina + dt * FOOT.stamina / FOOT.refill); if (me.stamina >= 4) me.tired = false; }
+      else { me.stamina = Math.min(FOOT.stamina, me.stamina + dt * FOOT.stamina / FOOT.refill); if (!a.sprint && me.stamina >= 2) me.tired = false; }   // out of breath until Shift is let go
 
       // direction, relative to the camera: forward is where it looks, +moveX is to its right
       const sy = Math.sin(camYaw), cy = Math.cos(camYaw);
