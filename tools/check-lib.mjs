@@ -38,7 +38,8 @@ export async function openPage(browser, baseUrl, query, opts, errors) {
   const page = await context.newPage();
   page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errors.push(m.text()); });
   page.on('pageerror', (e) => errors.push('PAGEERROR ' + e.message));
-  await page.goto(baseUrl + '?test=1&hour=14' + query);
+  // the hour is 14 unless the query names one (the first of two would win)
+  await page.goto(baseUrl + '?test=1' + (/[&?]hour=/.test(query) ? '' : '&hour=14') + query);
   await Promise.race([
     page.evaluate(() => window.__game.test.ready),
     sleep(30000).then(() => { throw new Error('the page was not ready after 30 s'); }),
@@ -58,7 +59,20 @@ export async function calibrate(page) {
     }
     return runs.sort((x, y) => x - y)[10];
   });
-  return { median, k: Math.max(1, median / 5) };
+  // The same work again, inside 60 real frames, keeping the slowest run. With no graphics card the
+  // drawing threads take the processor away from the page now and then; this measures how badly,
+  // so the limit on a single frame (gate G4) is stretched by what the machine does, not the game.
+  const worst = await page.evaluate(() => new Promise((resolve) => {
+    const a = new Float64Array(1 << 16); let n = 0, max = 0;
+    const tick = () => {
+      const t0 = performance.now();
+      for (let p = 0; p < 64; p++) for (let i = 0; i < a.length; i++) a[i] = a[i] * 0.999 + i;
+      max = Math.max(max, performance.now() - t0);
+      if (++n < 60) requestAnimationFrame(tick); else resolve(max);
+    };
+    requestAnimationFrame(tick);
+  }));
+  return { median, worst, k: Math.max(1, median / 5), kHitch: Math.max(1, median / 5, worst / 5) };
 }
 
 // Drive a named route with the route follower, sampling the numbers the gates need.

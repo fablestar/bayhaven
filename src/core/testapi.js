@@ -92,7 +92,7 @@ export function createTestApi(ctx) {
 
   // names day 2's first checks and tools/shot.mjs still read; new checks use test and modules
   const game = window.__game = {
-    test, state, events, modules: M, renderer: ctx.renderer, camera: ctx.camera, quality, loop, save: ctx.save,
+    test, state, events, modules: M, renderer: ctx.renderer, camera: ctx.camera, quality, loop, save: ctx.save, scene: ctx.scene,
     setHour: (h) => test.setHour(h),
     get buildDay() { return state.build.day; },
     get car() { return M.vehicles && M.vehicles.player; },

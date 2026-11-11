@@ -1,0 +1,85 @@
+{
+  "v": 1,
+  "day": 2,
+  "savedAt": "2026-11-11T15:51:22.116Z",
+  "playSeconds": 0,
+  "sections": {
+    "clock": {
+      "hour": 14.01105981819916,
+      "weather": "clear"
+    },
+    "economy": {
+      "cash": 1250,
+      "followers": 212
+    },
+    "chars": {
+      "active": "mags",
+      "mags": {
+        "x": -24,
+        "z": 40.5,
+        "h": 1.5707963267948966,
+        "health": 100,
+        "armour": 0,
+        "outfit": [
+          "none",
+          "none",
+          "none",
+          "none",
+          "none"
+        ],
+        "weapons": {},
+        "radio": null
+      },
+      "teo": {
+        "x": -24,
+        "z": 40.5,
+        "h": 1.5707963267948966,
+        "health": 100,
+        "armour": 0,
+        "outfit": [
+          "none",
+          "none",
+          "none",
+          "none",
+          "none"
+        ],
+        "weapons": {},
+        "radio": null
+      }
+    },
+    "missions": {
+      "done": [],
+      "available": []
+    },
+    "property": {
+      "owned": [],
+      "garage": {}
+    },
+    "found": {
+      "flamingos": [],
+      "postcards": [],
+      "bigair": []
+    },
+    "stats": {
+      "distanceKm": 0,
+      "bestDrift": 285,
+      "peakViewers": 0
+    },
+    "settings": {
+      "quality": "auto",
+      "music": 0.8,
+      "sfx": 1,
+      "reduceMotion": false
+    }
+  },
+  "versions": {
+    "clock": 1,
+    "economy": 1,
+    "chars": 1,
+    "missions": 1,
+    "property": 1,
+    "found": 1,
+    "stats": 1,
+    "settings": 1
+  }
+}

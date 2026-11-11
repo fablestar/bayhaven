@@ -59,7 +59,9 @@ export default [
       const rng = await import('../../src/core/rng.js');
       const a = rng.rng(42), b = rng.rng(42);
       t.expect([a(), a(), a()].join() === [b(), b(), b()].join(), '==', true, 'rng(seed) repeats');
-      t.expect(rng.rng(20261111)(), '==', 0.6092313118278980, 'rng is still day 1\'s generator (first number of the city seed)');
+      // taken from day 1's own builder.js (commit d46d937) with the city's seed
+      const city = rng.rng(20261111);
+      t.expect([city(), city(), city()].join(), '==', [0.5643661734648049, 0.9201769302599132, 0.6690848593134433].join(), 'rng is still day 1\'s generator (first three numbers of the city seed)');
       t.expect(rng.hash2(7, 3, -2) === rng.hash2(7, 3, -2) && rng.hash2(7, 3, -2) !== rng.hash2(7, -2, 3), '==', true, 'hash2 is steady and tells (3, -2) from (-2, 3)');
       const r3 = rng.rng(5); let taxi = 0;
       for (let i = 0; i < 1000; i++) if (rng.weighted(r3, { tarpon: 3, taxi: 1 }) === 'taxi') taxi++;
@@ -119,7 +121,7 @@ export default [
       const r = await t.eval(() => {
         const { map, nav } = window.__game.modules;
         const east = nav.laneNear(0, 40, Math.PI / 2), west = nav.laneNear(0, 34, -Math.PI / 2);
-        const route = nav.route({ x: -24, z: 40.5 }, { x: 52, z: -37 });
+        const route = [{ x: -24, z: 40.5 }, ...nav.route({ x: -24, z: 40.5 }, { x: 52, z: -37 })];
         let len = 0; for (let i = 1; i < route.length; i++) len += Math.hypot(route[i].x - route[i - 1].x, route[i].z - route[i - 1].z);
         const dead = nav.lanes.find((l) => l.to.out.length === 1);
         return {
@@ -142,7 +144,7 @@ export default [
       t.expect(r.eastName, '==', 'Heron Walk Drive', 'the beachfront street\'s name');
       t.expect(r.nextOk && r.next === 2, '==', true, 'every lane leads somewhere; a T-junction offers two ways on');
       t.expect(r.deadTurns, '==', true, 'a dead end turns back');
-      t.expect(r.routeLen, 'between', [120, 190], 'route from the spawn to the far corner of the block (m)');
+      t.expect(r.routeLen, 'between', [140, 160], 'route from the spawn round the corner to the far end of the block (m; 150 along the street centres)');
       t.expect(r.viaMap, '==', 'heron-walk-drive', 'map.nearestRoad');
       t.expect(r.state, '==', 'tideline', 'state.world.district');
     },

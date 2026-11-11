@@ -78,11 +78,13 @@ try {
   const gatesWanted = ['G2', 'G3', 'G4'].filter(wanted);
   for (const level of gatesWanted.length ? levels : []) {
     const errors = [];
-    const page = await openPage(browser, baseUrl, `&quality=${level}&seed=1`, {}, errors);
+    // a small window: software drawing is slow, and draw calls, triangles and simulation time do not depend on its size
+    const page = await openPage(browser, baseUrl, `&quality=${level}&seed=1`, fps ? {} : { viewport: { width: 480, height: 270 } }, errors);
     const cal = await calibrate(page);
     const k = fps ? 1 : cal.k;
-    report.k = Math.max(report.k, +k.toFixed(2));
-    say(`gates on ${level}: k = ${k.toFixed(2)} (calibration ${cal.median.toFixed(1)} ms)`);
+    const kHitch = fps ? 1 : cal.kHitch;
+    report.k = Math.max(report.k, +k.toFixed(2)); report.kHitch = Math.max(report.kHitch || 1, +kHitch.toFixed(2));
+    say(`gates on ${level}: k = ${k.toFixed(2)} (calibration ${cal.median.toFixed(1)} ms), single-frame k = ${kHitch.toFixed(2)} (worst ${cal.worst.toFixed(1)} ms)`);
     const B = (key) => TABLE[key][['low', 'medium', 'high'].indexOf(level)];
     if (wanted('G3')) {
       if (gates.G3 === 'skipped') gates.G3 = 'pass';
@@ -106,7 +108,7 @@ try {
       if (!d) { name = 'block-60'; d = await driveRoute(page, name); }
       const all2 = [...errors, ...(d ? d.errors : [])];
       (report.drives ||= []).push({ route: name, quality: level, seconds: +d.seconds.toFixed(1), metres: Math.round(d.metres), chunksCrossed: d.chunksCrossed,
-        simMs: +d.simMs.toFixed(2), simP95: +d.simP95.toFixed(2), simMax: +d.simMax.toFixed(2), chunkMsP95: d.chunkMsP95, wallHits: d.crashes, errors: all2.length });
+        simMs: +d.simMs.toFixed(2), simP95: +d.simP95.toFixed(2), simMax: +d.simMax.toFixed(2), chunkMsP95: d.chunkMsP95, wallHits: d.crashes, wallSeconds: Math.round(d.wallSeconds), errors: all2.length });
       if (wanted('G2')) {
         if (gates.G2 === 'skipped') gates.G2 = 'pass';
         if (all2.length) failGate('G2', `${level}: ${all2.length} console errors or warnings: ${all2.slice(0, 3).join(' | ')}`);
@@ -116,7 +118,7 @@ try {
       if (wanted('G4')) {
         if (gates.G4 === 'skipped') gates.G4 = 'pass';
         if (d.chunkMsP95 > 4 * k) failGate('G4', `${level}: chunkMs p95 ${d.chunkMsP95.toFixed(2)}, budget ${(4 * k).toFixed(2)}`);
-        if (d.simMax > 12 * k) failGate('G4', `${level}: a frame's simulation took ${d.simMax.toFixed(2)} ms, limit ${(12 * k).toFixed(2)}`);
+        if (d.simMax > 12 * kHitch) failGate('G4', `${level}: a frame's simulation took ${d.simMax.toFixed(2)} ms, limit ${(12 * kHitch).toFixed(2)}`);
       }
     }
     await page.context().close();
