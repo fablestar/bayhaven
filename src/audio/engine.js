@@ -1,17 +1,112 @@
 // All sound is made here from oscillators and noise. No audio files anywhere in this game.
-//   engine: two oscillators through a low-pass filter
-//   wind:   noise that rises with speed
-//   surf:   noise that swells and fades like waves, louder the closer you are to the sea
-//   day 2:  four gears on the engine, tyre squeal, crash thumps, lamp clangs, a horn
-// Recipes from plan/bible/art/sfx.md (rows 1, 17, 22, 26, 29, 32). Levels are scaled to sit
-// with day 1's quiet engine.
+// The mixer (day 4): master > music, effects, ambience, voice, ui. Each bus is
+//   in > duck > fader > master, and the master ends in a soft limiter (a hard compressor, then tanh).
+//   mixer.bus(name)                 the node to connect a sound to
+//   mixer.duck(bus, dB, seconds, { attack, release, id })   a dip as a gain ramp; the deepest one wins
+//   mixer.rms(bus)                  what the bus measures right now (music and master only)
+// Faders and ducks: plan/bible/art/synth-patches.md section 6.
+// The car (days 1 and 2), now on the effects bus, with wind and surf on the ambience bus:
+//   engine: two oscillators through a low-pass filter, four gears
+//   wind:   noise that rises with speed      surf: noise that swells like waves near the sea
+//   tyre squeal, crash thumps, lamp clangs, a horn (plan/bible/art/sfx.md rows 1, 17, 22, 26, 29, 32)
+
+const dB = (d) => Math.pow(10, d / 20);
+export const BUSES = { music: -10, effects: -6, ambience: -14, voice: -8, ui: -12 };
+const SLIDER = { music: 'music', effects: 'sfx', ambience: 'sfx', voice: 'voice', ui: 'sfx' };
+
+export function createMixer(settings = {}) {
+  const mixer = { ctx: null, master: null, muted: false, ducks: [], buses: {} };
+  const probes = {};
+  const slider = (name) => { const v = settings[SLIDER[name]]; return v == null ? 1 : v; };
+
+  mixer.start = () => {
+    if (mixer.ctx) { if (mixer.ctx.state === 'suspended' && !document.hidden) mixer.ctx.resume(); return false; }
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return false;
+    const ctx = mixer.ctx = new AC();
+    // the limiter: nothing leaves louder than 0.98 of full scale
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -3; comp.knee.value = 0; comp.ratio.value = 20; comp.attack.value = 0.003; comp.release.value = 0.25;
+    const soft = ctx.createWaveShaper(), curve = new Float32Array(1025), k = 1.5;
+    for (let i = 0; i < 1025; i++) curve[i] = 0.98 * Math.tanh(k * (i / 512 - 1)) / Math.tanh(k);
+    soft.curve = curve;
+    mixer.master = ctx.createGain(); mixer.master.gain.value = mixer.muted ? 0 : (settings.master ?? 1);
+    mixer.master.connect(comp); comp.connect(soft); soft.connect(ctx.destination);
+    for (const name in BUSES) {
+      const input = ctx.createGain(), duck = ctx.createGain(), fader = ctx.createGain();
+      fader.gain.value = dB(BUSES[name]) * slider(name);
+      input.connect(duck); duck.connect(fader); fader.connect(mixer.master);
+      mixer.buses[name] = { input, duck, fader, depth: 0 };
+    }
+    for (const [name, node] of [['music', mixer.buses.music.fader], ['master', soft]]) {
+      const a = ctx.createAnalyser(); a.fftSize = 2048; node.connect(a);
+      probes[name] = { a, data: new Float32Array(2048) };
+    }
+    return true;
+  };
+  mixer.bus = (name) => (mixer.buses[name] ? mixer.buses[name].input : null);
+  // sliders from the settings menu: master, music, sfx, voice (0 to 1)
+  mixer.setLevel = (key, value) => {
+    settings[key] = value;
+    if (!mixer.ctx) return;
+    const t = mixer.ctx.currentTime;
+    if (key === 'master') { if (!mixer.muted) mixer.master.gain.setTargetAtTime(value, t, 0.03); return; }
+    for (const name in BUSES) if (SLIDER[name] === key) mixer.buses[name].fader.gain.setTargetAtTime(dB(BUSES[name]) * value, t, 0.03);
+  };
+  // a duck holds for `seconds` (Infinity until unduck(id)); two at once use the deeper one
+  mixer.duck = (bus, depth, seconds = 0.3, { attack = 0.03, release = 0.4, id = null, filter = null } = {}) => {
+    if (!mixer.ctx || !mixer.buses[bus]) return;
+    if (id) mixer.ducks = mixer.ducks.filter((d) => d.id !== id);
+    mixer.ducks.push({ bus, depth: Math.abs(depth), until: mixer.ctx.currentTime + attack + seconds, attack, release, id, filter });
+    mixer.update();
+  };
+  mixer.unduck = (id) => { for (const d of mixer.ducks) if (d.id === id) d.until = 0; mixer.update(); };
+  // called every frame: lets go of ducks whose time is up
+  mixer.update = () => {
+    if (!mixer.ctx) return;
+    const t = mixer.ctx.currentTime;
+    for (const name in mixer.buses) {
+      const b = mixer.buses[name];
+      let deep = 0, attack = 0.03, release = b.release || 0.4;
+      for (const d of mixer.ducks) if (d.bus === name && d.until > t && d.depth >= deep) { deep = d.depth; attack = d.attack; release = d.release; }
+      if (deep === b.depth) continue;
+      // setTargetAtTime gets 95% of the way in three time constants
+      b.duck.gain.cancelScheduledValues(t);
+      b.duck.gain.setTargetAtTime(dB(-deep), t, (deep > b.depth ? attack : release) / 3);
+      b.depth = deep; b.release = release;
+    }
+    if (mixer.ducks.length) mixer.ducks = mixer.ducks.filter((d) => d.until > t);
+  };
+  mixer.rms = (name = 'music') => {
+    const p = probes[name];
+    if (!p) return 0;
+    p.a.getFloatTimeDomainData(p.data);
+    let sum = 0;
+    for (let i = 0; i < p.data.length; i++) sum += p.data[i] * p.data[i];
+    return Math.sqrt(sum / p.data.length);
+  };
+  // the mute key: master to silence in 50 ms
+  mixer.toggleMute = () => {
+    mixer.muted = !mixer.muted;
+    if (mixer.master) mixer.master.gain.setTargetAtTime(mixer.muted ? 0 : (settings.master ?? 1), mixer.ctx.currentTime, 0.017);
+    return mixer.muted;
+  };
+  mixer.depth = (bus) => (mixer.buses[bus] ? mixer.buses[bus].depth : 0);
+  document.addEventListener('visibilitychange', () => {       // quiet while the tab is hidden
+    if (!mixer.ctx) return;
+    if (document.hidden) mixer.ctx.suspend(); else mixer.ctx.resume();
+  });
+  return mixer;
+}
 
 // engine pitch within each gear: [speed share from, to, q from, to]
 const GEARS = [[0, 0.28, 0, 0.55], [0.28, 0.50, 0.35, 0.72], [0.50, 0.74, 0.50, 0.87], [0.74, 1, 0.62, 1]];
-const LEVEL = 0.3;
+// The car's levels were set by ear on day 1 with no buses. The bus faders are now in the way
+// (effects -6 dB, ambience -14 dB), so these put the same loudness back.
+const LEVEL = 0.3, FX = 1 / dB(BUSES.effects), AMB = 1 / dB(BUSES.ambience);
 
-export function createAudio() {
-  let ctx = null, master, o1, o2, filt, engine, wind, windFilt, surf, muted = false;
+export function createAudio(mixer) {
+  let ctx = null, master, ambience, o1, o2, filt, engine, wind, windFilt, surf;
   let white, squeal, squealFilt, squealSaw, horn = null, dipUntil = 0;
   const stats = { gear: 1, q: 0, squeal: 0, crashes: 0, clangs: 0, clatters: 0, horn: false, shifts: 0 };
 
@@ -23,11 +118,11 @@ export function createAudio() {
   }
 
   function start() {
-    if (ctx) { if (ctx.state === 'suspended' && !document.hidden) ctx.resume(); return; }
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return;
-    ctx = new AC();
-    master = ctx.createGain(); master.gain.value = 1; master.connect(ctx.destination);
+    if (!mixer.start()) return;
+    ctx = mixer.ctx;
+    // two trims put day 1's levels back under the new faders
+    master = ctx.createGain(); master.gain.value = FX; master.connect(mixer.bus('effects'));
+    ambience = ctx.createGain(); ambience.gain.value = AMB; ambience.connect(mixer.bus('ambience'));
 
     o1 = ctx.createOscillator(); o1.type = 'sawtooth';
     o2 = ctx.createOscillator(); o2.type = 'square';
@@ -41,7 +136,7 @@ export function createAudio() {
     const noise = ctx.createBufferSource(); noise.buffer = noiseBuffer(); noise.loop = true;
     windFilt = ctx.createBiquadFilter(); windFilt.type = 'bandpass'; windFilt.Q.value = 0.6;
     wind = ctx.createGain(); wind.gain.value = 0;
-    noise.connect(windFilt); windFilt.connect(wind); wind.connect(master);
+    noise.connect(windFilt); windFilt.connect(wind); wind.connect(ambience);
 
     // surf: a slow oscillator opens and closes the volume, like waves rolling in
     const surfFilt = ctx.createBiquadFilter(); surfFilt.type = 'lowpass'; surfFilt.frequency.value = 650;
@@ -50,7 +145,7 @@ export function createAudio() {
     const lfoAmt = ctx.createGain(); lfoAmt.gain.value = 0.4;
     lfo.connect(lfoAmt); lfoAmt.connect(swell.gain);
     surf = ctx.createGain(); surf.gain.value = 0;
-    noise.connect(surfFilt); surfFilt.connect(swell); swell.connect(surf); surf.connect(master);
+    noise.connect(surfFilt); surfFilt.connect(swell); swell.connect(surf); surf.connect(ambience);
     noise.start(); lfo.start();
 
     // white noise for squeals and crashes
@@ -153,18 +248,5 @@ export function createAudio() {
     squeal.gain.setTargetAtTime(stats.squeal * LEVEL * 0.5, t, 0.04);
   }
 
-  // go quiet when the tab is hidden
-  document.addEventListener('visibilitychange', () => {
-    if (!ctx) return;
-    if (document.hidden) ctx.suspend(); else ctx.resume();
-  });
-
-  return {
-    start, update, crash, clang, clatter, setHorn, stats,
-    toggleMute() {
-      muted = !muted;
-      if (master) master.gain.setTargetAtTime(muted ? 0 : 1, ctx.currentTime, 0.03);
-      return muted;
-    },
-  };
+  return { start, update, crash, clang, clatter, setHorn, stats, toggleMute: () => mixer.toggleMute() };
 }
