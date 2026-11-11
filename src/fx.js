@@ -33,7 +33,7 @@ export function createFx(scene, { low = false, heightAt = () => 0 } = {}) {
   const sparks = quadMesh(MAX_SPARK, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false,
     blending: THREE.AdditiveBlending, fog: false, side: THREE.DoubleSide }));
   const skids = quadMesh(MAX_SKID, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false,
-    polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }));
+    side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }));
   smoke.mesh.renderOrder = 5; sparks.mesh.renderOrder = 6; skids.mesh.renderOrder = 1;
   scene.add(skids.mesh, smoke.mesh, sparks.mesh);
 
@@ -113,7 +113,7 @@ export function createFx(scene, { low = false, heightAt = () => 0 } = {}) {
         const p = puffs[i], o = i * 12;
         if (p.life <= 0) { smoke.pos.fill(0, o, o + 12); continue; }
         const k = 1 - p.life / p.max, s = (0.6 + 1.8 * k) * 0.5;
-        const a = 0.5 * (k > 0.6 ? (1 - k) / 0.4 : 1) * Math.min(1, k * 8);
+        const a = 0.9 * (k > 0.6 ? (1 - k) / 0.4 : 1) * Math.min(1, k * 8);   // the soft texture brings this to about 50% at the middle
         const P = smoke.pos;
         P[o] = p.x - (right.x + upv.x) * s; P[o + 1] = p.y - (right.y + upv.y) * s; P[o + 2] = p.z - (right.z + upv.z) * s;
         P[o + 3] = p.x + (right.x - upv.x) * s; P[o + 4] = p.y + (right.y - upv.y) * s; P[o + 5] = p.z + (right.z - upv.z) * s;
