@@ -6,6 +6,28 @@ Built from the notes in `changelog/` by `tools/changelog.mjs`. Newest day first.
 
 ### D4-S1 · Downtown (day 4 headline)
 
+**Shipped**
+
+1. **The Meridian grid.** `zones/meridian.js`: 1.6 by 1.1 km behind the beach, 19 named north-south streets and 14 east-west, every fourth line an avenue (8 avenues, 22 m), and **Coral Boulevard**, 30 m with a palm median, from the beach to the Spire. North of Tower Way the same line is Kapok Street. The beachfront's streets now run on into downtown: the barriers that closed them between x -800 and 800 are gone. Lights stand at every crossing of two big roads (18 of them).
+2. **Five tower recipes.** `gen/meridian.js`: M1 slab, M2 stepped (setbacks at 40%, 70% and 90%), M3 twin shafts on a podium, M4 curved corner (a 12 m curve in six segments), M5 tower with an open plaza (planters, benches, flagpoles, a box sculpture, a helipad on one in five). 317 towers in four neighbourhoods at the bible's heights: Bayfront 50 to 100 m, The Exchange 120 to 220 m, Radio Row 22 to 60 m with two at 106 m, Uptown 16 to 120 m. Pale glass and pastel concrete, and exactly one coral tower: First Bayhaven Savings, 184 m, at (96, -636). At street level: lobby and shop glass, a door under a canopy, a name board, awnings on the twin podiums, colonnades on the stepped towers, a clock on the curved corners, crown neon.
+3. **Window walls.** One 1024 x 1024 window-grid canvas (`gfx/windowgrid.js`), read by one material. About 30% of panes are lit, in day 1's warm, cyan and pink. Towers light floor by floor at dusk: measured, the lit line is at 15 m at 18:36, 61 m at 18:48, 119 m at 19:00, 187 m at 19:18, and at the top of the Spire (260 m) at night. The same walls are used near, in the far shells and in the skyline, so a tower is the same tower at every distance.
+4. **The Meridian Spire** at (52, -900), 260 m: a 60 m podium, 22 boxes each turned 4 degrees more than the one below, tapering from 40 m to 16 m, a dark band at every joint (white at night), penthouse, lantern, mast, and a pink light on top that pulses every 2 s and is never lost in the fog. Also the plaza, its palms, the service dock on Tower Way and the scaffold on the north face.
+5. **City Hall** at (-200, -560): the hall, twelve columns, steps, a drum and an eight-sided dome to 38 m, and the fountain at (-212, -540) with its jet, cyan at night. Cypress Street is closed across the plaza.
+6. **The skyline** is now built from the real map: every tower over 30 m (288 of them) and both landmarks, 7,114 triangles (budget 20,000). The made-up downtown from day 2 is gone.
+7. **Bayhaven Tomorrow billboards** ("Bayhaven Tomorrow / Now Leasing The Sky") from the sign atlas, on the strip where downtown meets the beachfront, two of them flanking the foot of the boulevard. The sign sheet grew by eight cells.
+8. **The clip.** `?clip=day-4`: dusk, 13 s up Coral Boulevard from the beach end, 304 m, ending at 119 km/h, the towers lighting (the lit line climbs from about 25 m to about 165 m) and the Spire dead ahead.
+
+Also: Bayfront Park is a lawn with palms (its landmark is tier B), kept clear of towers.
+
+**Not shipped**
+
+- **Nothing from the "if you finish early" list:** no Twin Sails or skybridge, no rooftop water tanks. (Helipads are on some M5 towers because the recipe asks for them.)
+- **Spire Circle is not a roundabout.** Traffic drives straight through junctions, so an island in the middle would be driven through. The ring of eight palms stands on a half-round lawn on the plaza side instead, and the junction is a plain T.
+- **The radio flip in the roadmap's clip line** belongs to session D4-S2.
+- **D4.1's other three districts** (Palma Vieja, The Paintworks, Rustwater) are session D4-S3's. My D4.1 checks Meridian only.
+- Tier B and C pieces in the bible file were not in scope: the M6 to M9 recipes (their share is M1, as the bible says), the Thermometer's lamp strip, the Spire's cleaning cradle and guards, Baylink, the other landmarks, shop doors, vignettes, sound.
+- No art requests were made.
+
 ## Day 3: On foot (Teo gets out of the car)
 
 ### D3-S1 · On foot (Teo gets out of the car)

@@ -11,7 +11,9 @@ const ASPHALT = 0x3b3946, DASH = 0xf2e6b0, PAVE = 0xd6cdc4, PLAZA = 0xe0e0e6, LA
 const hit = (a, b) => a.x0 < b.x1 && a.x1 > b.x0 && a.z0 < b.z1 && a.z1 > b.z0;
 
 // "Bayhaven Tomorrow: Now Leasing The Sky": a board on two posts, 12.8 x 6.4 m, two sign cells high
+const stats = { billboards: 0, towers: 0 };
 export function billboard(o, x, z, face = 's') {
+  stats.billboards++;
   const ns = face === 's' || face === 'n', c = ns ? { x0: x - 6.6, x1: x + 6.6, z0: z - 0.25, z1: z + 0.25 } : { x0: x - 0.25, x1: x + 0.25, z0: z - 6.6, z1: z + 6.6 };
   for (const u of [-4.5, 4.5]) o.B.box(ns ? x + u : x, 3.5, ns ? z : z + u, 0.5, 7, 0.5, 0x2b2838);
   cellBox(o, c, 6.6, 13.4, BOARD, { bottom: true });
@@ -56,6 +58,7 @@ function streetLevel(o, lot) {
 }
 
 function tower(o, lot) {
+  stats.towers++;
   const rnd = o.rnd, top = lot.tiers.filter((t) => !t.plain).reduce((a, b) => (b.y1 > a.y1 ? b : a));
   o.G.flat(lot.x0, lot.x1, lot.z0, lot.z1, CURB + 0.012, PLAZA);
   drawTiers(o, lot.tiers);
@@ -93,7 +96,7 @@ const reserved = (o, lot) => {
 
 // ---------- the chunk ----------
 export default {
-  id: 'meridian',
+  id: 'meridian', stats,
   *build(o, chunk, map, heroes) {
     const R = chunk.rect, zone = map.zone('meridian'), Z = zone.bounds, G = o.G, M = o.M;
     const x0 = Math.max(R.x0, Z.x0), x1 = Math.min(R.x1, Z.x1), z0 = Math.max(R.z0, Z.z0), z1 = Math.min(R.z1, Z.z1);

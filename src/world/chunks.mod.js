@@ -25,6 +25,9 @@ export default {
     chunks.ensure(map.spawn.x, map.spawn.z, 1);          // the first frame shows the nine chunks round the spawn
     ctx.events.on('quality:changed', () => { const p = ctx.state.player; chunks.reset(); chunks.ensure(p.x, p.z, 1); });
     ctx.test.chunks = () => chunks.stats();
+    // the far city and its lights: skyline numbers, how far the lights are on (0 to 1), how high the lit floors reach
+    ctx.test.city = () => { const k = chunks.skyline, on = mats.on || 0; return { triangles: k.triangles, towers: k.towers, tall: k.tall, landmarks: k.landmarks.slice(), top: k.top, beacon: !!k.beacon,
+      on, litTo: Math.max(0, Math.min(260, ((on - 0.1) / 0.8) * 260)), stats: Object.fromEntries(Object.values(genFiles).filter((m) => m.default && m.default.id).map((m) => [m.default.id, { ...(m.default.stats || {}) }])) }; };
     ctx.test.ensure = (x, z, r) => chunks.ensure(x, z, r);
     return chunks;
   },

@@ -13,3 +13,11 @@ Events I emit: none.
 Events I listen to: `vehicle:crash` and `vehicle:scrape` (sparks, shake), `prop:broken` (shake).
 
 Stand-ins I left: none. Not yet matching the bible: `fx.emit`, `fx.ribbon`, `fx.flash`, `fx.debris`, and the `atlas` module.
+
+## Day 4 (session D4-S1)
+
+| Name | Signature | Meaning |
+|---|---|---|
+| `windowgrid.js` | `windowGrid() → texture` · `windowMaterial() → material with setOn(on)` · `wallUV(width, y0, y1, cell, floor) → [u0, u1, v0, v1]` · `PLAIN_UV` | The window-grid texture of `plan/bible/art/kits.md` section 6 (one 1024² canvas) and the Lambert material that reads it: panes darken the wall by day and glow at night, `lit = smoothstep(0, 0.08, on - 0.10 - 0.80 × y / 260)`. A face whose u is below 0 is plain wall |
+| `chunkMaterials().W` | the window material | `update(night)` also sets it, and keeps `on` |
+| `atlas.js` | `signUV(i)` for cells 0 to 23 · `TOWER_SIGNS` | The sign sheet is 1024 × 1536 now (12 rows). New cells: 16 Bayhaven Tomorrow, 17 Now Leasing The Sky (stacked, they are the billboard), 18 Meridian Spire, 19 City Hall, 20 First Bayhaven Savings, 21 Iguana Insurance, 22 Maison Sable, 23 Bay Cab |
