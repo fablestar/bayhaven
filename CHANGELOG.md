@@ -29,6 +29,32 @@ Also: the Heron comes in pink or teal, picked at random each load (the clip is a
 - The scores are not saved between loads.
 - No art requests were made.
 
+### D2-S2 · Foundation (the frame every later session stands on)
+
+**Shipped**
+
+Nothing the player sees changed. Under the hood:
+
+1. **The module layout.** Every file moved into its folder: `core`, `gfx`, `world`, `vehicles`, `actors`, `systems`, `content`, `audio`, `ui`. The car file was split into `vehicles/models.js` (the shape) and `vehicles/vehicle.js`. Largest file is `src/world/block.js` at 473 lines.
+2. **The registry.** `src/core/registry.js` finds every `*.mod.js` with `import.meta.glob` and runs it in order. 16 modules today: clock, world, sky, nav, map, gulls, vehicles, props, fx, player, drops, clips, audio, camera, hud, debug. `src/main.js` is 50 lines of boot code. Adding a feature is adding a file.
+3. **Core.** `events.js` (on, once, emit; a handler that throws is caught and counted), `state.js` (the shape in the plan), `rng.js` (day 1's generator plus `hash2`, `pick`, `weighted`), `quality.js` (low, medium, high; every budget number in one table), `input.js` (one actions object for keys, touch, pad and scripts, plus one-step presses), `loop.js` (60 fixed steps a second, at most three a frame, slow ticks with `every` and `after`).
+4. **The test API** on `window.__game.test`: `ready`, `stats`, `errors`, `teleport`, `setHour`, `setQuality`, `input`, `wait`, `player`, and `advance`, `count`, `reset`, `drive` (a small autopilot that follows roads), `save.export` and `save.import`, `clip.play`.
+5. **The check runner.** `npm run check -- --id <session>` or `--day N`: builds, runs the name check, opens the game on low and on high, runs gates G1 to G7 and the check files, prints one JSON object and writes `dist/report.json`. `--fps` mode (gate G8) is written and refuses to run without a real graphics card. `tools/checks/d1.mjs` holds day 1 as three checks.
+6. **Tools.** `tools/lint-names.mjs` reads `plan/BANNED.txt` (52 patterns, 0 hits in 45 files). `tools/changelog.mjs` builds `CHANGELOG.md` from `changelog/*.md` before every build and writes the build day (the newest note's day) into `src/core/build.js`. The old hand-written day 1 and warm-up entries became `changelog/D1-S1.md` and `changelog/D0-S1.md`, word for word.
+7. **Stand-ins for the next sessions.** `src/world/nav.js`: the block's four streets as 20 lanes (keep right, 3.5 m off centre) with `laneNear`, `next`, `lanesInChunk` and `route`. `src/world/map.js`: `districtAt`, `isLand`, `heightAt`, `depthAt`, `surfaceAt`, `nearestRoad`, `snap` for the day 1 block.
+8. **Contracts.** `docs/contracts/` has one file per folder: core, gfx, world, vehicles, actors, systems, content, audio, ui.
+9. **The save format, version 1.** `src/core/save.js`: `{ v, day, savedAt, playSeconds, sections, versions }` with a section for each group of fields in plan/04 section 18 (clock, economy, chars, missions, property, found, stats, settings), slots 1 to 3 and auto, export and import as a text code, a section it does not know is kept and written back. A real export is in `tools/fixtures/saves/v1.json`. No menu, and nothing saves or loads by itself yet.
+10. **The `?debug` overlay** (the "if you finish early" item): calls, triangles, frame rate, simulation time, a frame-time graph and the nine costliest modules, with keys 1 to 9 to switch them off.
+
+**Not shipped**
+
+- **Rendering does not interpolate between steps yet.** The loop hands every module `alpha`; the car is still drawn at its last step, as before this session.
+- **Gate G2's "at least 8 chunks".** The map is one block, so the 60 s gate drive is laps of the block (588 m, 4 chunk squares crossed). The gate reports this as a note. `route:beach-60` is in the runner and takes over when the beachfront streams (D2-S3).
+- **Gate G8 was never run**: the studio machine has no graphics card.
+- `test.setWeather`, `spawnVehicle`, `enter`, `exit`, `setHeat`, `mission`, `switchTo`: their systems do not exist yet. `t.spawn` in the harness moves the Heron.
+- Changing quality while playing does not resize the effect pools (they are sized at load).
+- The debug overlay has no chunk rings or simulation levels to show yet.
+
 ## Day 1: A block, a car, a sunset: the block comes alive (2026-11-11)
 
 ### D1-S1 · A block, a car, a sunset: the block comes alive (2026-11-11)
