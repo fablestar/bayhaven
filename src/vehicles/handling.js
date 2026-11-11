@@ -20,10 +20,26 @@ export const SURFACES = {
   sea: { grip: 0.5, drag: 2.5 },   // day 1's "a lot stronger in the sea"
 };
 
+// One preset per model: top speed, time to 100 km/h and mass are the catalogue's (plan/04 section 3).
+// capF / capR: grip caps per axle. a / b: axle distances. hw / hl: half width and half length of
+// the collision box. pull: what a traffic driver uses on rails (m/s2).
+const preset = (id, top, t100, mass, o) => ({ id, drive: 'front', capF: 15, capR: 17, A: 6, vTop: top / 3.6, t100, mass,
+  slideHold: 0.3, lockMul: 1, steerRate: 7, pull: 2.5, solved: false, ...o });
 export const PRESETS = {
-  heron: { id: 'heron', drive: 'rear', capF: 15, capR: 17, A: 6.64, vTop: 137 / 3.6, t100: 7.5,
-    slideHold: 0.35, a: 1.35, b: 1.35, mass: 1300, lockMul: 1, steerRate: 7 },
+  heron: preset('heron', 137, 7.5, 1300, { drive: 'rear', A: 6.64, slideHold: 0.35, a: 1.35, b: 1.35, hw: 0.96, hl: 2.23 }),
+  snook: preset('snook', 125, 10, 1000, { capF: 16, capR: 16, a: 1.15, b: 1.15, hw: 0.8, hl: 1.85, lockMul: 1.1, steerRate: 8 }),
+  tarpon: preset('tarpon', 140, 9, 1500, { a: 1.45, b: 1.45, hw: 0.925, hl: 2.35 }),
+  mullet: preset('mullet', 130, 9.5, 1900, { drive: 'rear', capF: 14, capR: 14, a: 1.65, b: 1.65, hw: 0.975, hl: 2.65, lockMul: 0.9, steerRate: 6 }),
+  pompano: preset('pompano', 120, 12, 2200, { capF: 13, capR: 14, a: 1.6, b: 1.6, hw: 1.0, hl: 2.6, lockMul: 0.85, steerRate: 5, pull: 2.0 }),
 };
+PRESETS.taxi = { ...PRESETS.tarpon, id: 'taxi' };      // the Bay Cab is a Tarpon in a yellow coat
+
+// A preset ready to drive: its pull solved once so 0 to 100 km/h takes the catalogue's time.
+export function ready(id) {
+  const p = PRESETS[id] || PRESETS.heron;
+  if (!p.solved) { solveA(p); p.solved = true; }
+  return p;
+}
 
 export function createBody(preset) {
   return {
