@@ -47,6 +47,7 @@ export function createChunks({ scene, map, collide, props, decor, quality, event
     job.set = takeSet(); job.dec = decor.open(k, cx, cz, rect);
     const o = job.o = { ...job.set, rnd: rng(chunk.seed), low: quality.level === 'low',
       solid(x0, x1, z0, z1, h = 0, level = 0) { collide.add(chunk.owner, { x0, x1, z0, z1, h, level }); },
+      obb(cx, cz, hw, hd, rot, h = 0, level = 0) { collide.add(chunk.owner, { cx, cz, hw, hd, rot, h, level }); },       // a turned box
       prop(kind, x, y, z, rot, opts) { const p = props.add(kind, x, y, z, rot, { ...opts, owner: chunk.owner }); if (p) chunk.props.push(p); return p; },
       decor: job.dec.add,
       object(m) { m.matrixAutoUpdate = false; chunk.objects.push(m); },

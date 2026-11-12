@@ -5,7 +5,7 @@ import { TRIM, ROOF, GLASS, CURB, wallQuad, wallSlab, cellBox } from './kit.js';
 import { register, generator, paintInto } from './streets.js';
 import { board } from '../../gfx/murals.js';
 import { signUV, SHOP_SIGNS } from '../../gfx/atlas.js';
-import { BEIGE } from '../zones/northgate.js';
+import { BEIGE, BILLBOARDS, BOARD_Z } from '../zones/northgate.js';
 
 const LOT = 0x4a4754, RED = 0xff5a5a, YELLOW = 0xffc300, CARS = [0xf7f3ea, 0x9aa3ad, 0x2e4a6b, 0xff8f7a, 0x8fe3cf, 0x3a3844, 0xffc98f];
 export const stats = { strips: 0, boxes: 0, drives: 0, motels: 0, pools: 0, poleSigns: 0, poleMin: 99, billboards: 0, larry: 0, cars: 0, tallest: 0, parkRatioMin: 99 };
@@ -17,11 +17,6 @@ const FIRMS = {
   gull: { text: 'Gull, Gull & Gull', bg: 0xf7f3ea, ink: '#2e4a6b', suit: 0x6f6a78 }, limpet: { text: 'Limpet Legal', bg: 0xbce0ca, ink: '#2f7d5b', suit: 0x3a3844 },
   jellyfish: { text: 'Jellyfish Injury Law', bg: 0xf4bdbd, ink: '#b46bff', suit: 0xb46bff },
 };
-export const BILLBOARDS = [];
-for (const west of [-509, -353, -189, -33, 131, 287]) for (let i = 0; i < 6; i++) BILLBOARDS.push(west + 11 + 24 * i);
-BILLBOARDS.push(462, 486, 510, 534);
-export const BOARD_Z = -2458;
-
 // a parked car: two boxes and a collider. Decoration: the cars you can drive come from the traffic lane.
 export function car(o, x, z, alongZ, col = CARS[Math.floor(o.rnd() * CARS.length)], y = CURB) {
   const l = 4.3, w = 1.8;

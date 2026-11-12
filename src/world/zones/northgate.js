@@ -81,6 +81,12 @@ function split(b, addLot, { rng, hash2, overlap }) {
   }
 }
 
+// Billboard Row: forty boards on the north kerb of Billboard Road, six a block and four at the east end
+export const BILLBOARDS = [];
+for (const west of [-509, -353, -189, -33, 131, 287]) for (let i = 0; i < 6; i++) BILLBOARDS.push(west + 11 + 24 * i);
+BILLBOARDS.push(462, 486, 510, 534);
+export const BOARD_Z = -2458;
+
 // plan/bible/world/northgate.md section 6: the day band, and the night band. Vehicles that are not
 // built yet fall to tarpon; shopper, mascot, medic and dealer are tier B kinds, so they are tourists.
 const DAY = { traffic: { tarpon: 5, grouper: 5, snook: 4, mullet: 3, pompano: 3, heron: 2, possum: 2, manatee: 1, taxi: 1, hogfish: 1 }, peds: { tourist: 8, retiree: 3, 'office worker': 2 } };
@@ -94,6 +100,7 @@ export default {
   lots: 'grid',
   generator: 'northgate',
   rows, kit, hoods, split,
+  billboards: { z: BOARD_Z, xs: BILLBOARDS },
   hero: HERO, reserved: [],
   // the landmark lots stand at kerb height even over the streets they close
   plazas: [{ x0: -353, x1: -47, z0: -2109, z1: -1815 }, { x0: 131, x1: 433, z0: -2429, z1: -2131 }],

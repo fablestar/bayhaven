@@ -65,6 +65,7 @@ export function createMap() {
       }
     });
     for (const h of zone.hero) addLot({ ...h, id: `${zone.id}:${h.key || h.id}`, zone: zone.id, hero: h.id, recipe: 'hero', body: h, wall: h.body || 0xfdf6ea, seed: hash2(zone.seed, h.x0 | 0, 7), sides: { n: true, s: true, e: true, w: true } });
+    for (const l of zone.lotList || []) addLot(l);          // a spline district lays its own lots out (Mallard Greens)
     for (const r of zone.reserved) addLot({ ...r, id: `${zone.id}:${r.id}`, zone: zone.id, reserved: r.id, recipe: 'reserved', body: null, h: 0, seed: 0, sides: {} });
   }
   // ---- free paths: roads that are not on the grid (the expressway and its ramps, suburb lanes from splines) ----
