@@ -2,6 +2,7 @@
 // network, the blocks and the building lots, and answers the questions the rest of the game
 // asks. Pure data: no three.js in here, so it can run in a check or a worker.
 import { rng, hash2 } from '../core/rng.js';
+import { createDecks, deckPaths } from './decks.js';
 
 export const CHUNK = 160, WORLD = { x0: -3200, x1: 3200, z0: -3520, z1: 1280 };
 export const CURB = 0.14, SHORE = 80, WORLD_SEED = 20261111;
@@ -31,8 +32,9 @@ export function createMap() {
     // ---- road pieces: every line cut where it crosses another ----
     for (const line of all) {
       const cross = (line.axis === 'ns' ? ew : ns).filter((o) => o.at >= line.from && o.at <= line.to && line.at >= o.from && line.at <= o.to);
-      const cuts = [...new Set([line.from, ...cross.map((o) => o.at), line.to])].sort((a, b) => a - b);
-      const isNode = (pos) => cross.some((o) => o.at === pos);
+      const extra = line.cuts || [];                 // a line may ask for a joint where a free path meets it
+      const cuts = [...new Set([line.from, ...cross.map((o) => o.at), ...extra, line.to])].sort((a, b) => a - b);
+      const isNode = (pos) => extra.includes(pos) || cross.some((o) => o.at === pos);
       for (let i = 0; i < cuts.length - 1; i++) {
         const a = cuts[i], b = cuts[i + 1], mid = (a + b) / 2;
         if (line.closed.some(([c0, c1]) => mid > c0 && mid < c1)) continue;
@@ -65,11 +67,29 @@ export function createMap() {
     for (const h of zone.hero) addLot({ ...h, id: `${zone.id}:${h.key || h.id}`, zone: zone.id, hero: h.id, recipe: 'hero', body: h, wall: h.body || 0xfdf6ea, seed: hash2(zone.seed, h.x0 | 0, 7), sides: { n: true, s: true, e: true, w: true } });
     for (const r of zone.reserved) addLot({ ...r, id: `${zone.id}:${r.id}`, zone: zone.id, reserved: r.id, recipe: 'reserved', body: null, h: 0, seed: 0, sides: {} });
   }
+  // ---- free paths: roads that are not on the grid (the expressway and its ramps, suburb lanes from splines) ----
+  // A path is { id, name, kind, width, lanes, offsets, speed, level, pts: [[x, z, y]] }: one piece for each pair of points,
+  // a joint at every point. Two paths that share a point meet there; so does a grid road that has a joint or a dead end on it.
+  const decks = createDecks();
+  const freePaths = [...deckPaths().map((q) => ['decks', q])];
+  for (const zone of zones) for (const q of zone.paths || []) freePaths.push([zone.id, q]);
+  for (const [zid, q] of freePaths) for (let i = 0; i < q.pts.length - 1; i++) {
+    const [ax, az, ay = 0] = q.pts[i], [bx, bz, by = 0] = q.pts[i + 1];
+    const p = { id: q.id + ':' + i, roadId: q.id, name: q.name, kind: q.kind, axis: 'free', free: true, zone: zid, ax, az, bx, bz, ay, by, len: Math.hypot(bx - ax, bz - az),
+      width: q.width, lanes: q.lanes || 1, offsets: q.offsets, speed: q.speed, level: q.level || 0, a: ax + ',' + az, b: bx + ',' + bz, stub: false, oneWay: !!q.oneWay };
+    pieces.push(p); put(roadBucket, (ax + bx) / 2, (az + bz) / 2, p);
+    for (const [k, x, z] of [[p.a, ax, az], [p.b, bx, bz]]) {
+      // a free joint's half widths are huge so that nothing lines kerb parking up along its pieces; nav.js knows
+      if (!nodes.has(k)) nodes.set(k, { key: k, x, z, pieces: [], signal: false, half: { ns: 1e6, ew: 1e6 }, free: true });
+      nodes.get(k).pieces.push(p);
+    }
+  }
   // where a road of one district ends on the road of the next, the two dead ends become one joint
   const ends = new Map();
   for (const p of pieces) for (const [end, x, z] of [['a', p.ax, p.az], ['b', p.bx, p.bz]]) {
-    if (p[end]) continue;
+    if (p[end] || p.free) continue;
     const k = x + ',' + z, other = ends.get(k);
+    if (nodes.has(k) && nodes.get(k).free) { nodes.get(k).pieces.push(p); p[end] = k; p.stub = !p.a || !p.b; continue; }      // a grid road that ends on a free path
     if (!other) { ends.set(k, [p, end]); continue; }
     if (other[0].zone === p.zone || other[0].axis !== p.axis) continue;
     nodes.set(k, { key: k, x, z, pieces: [other[0], p], signal: false, half: { ns: 0, ew: 0 }, seam: true });
@@ -156,7 +176,7 @@ export function createMap() {
   }
 
   const map = {
-    chunk: CHUNK, world: WORLD, zones, pieces, nodes, blocks, lots, snapFailures: [],
+    chunk: CHUNK, world: WORLD, zones, pieces, nodes, blocks, lots, decks, snapFailures: [],
     bounds: { x0: zones.reduce((m, z) => Math.min(m, z.bounds.x0), 0) + 7, x1: zones.reduce((m, z) => Math.max(m, z.bounds.x1), 0) - 7, z0: zones.reduce((m, z) => Math.min(m, z.bounds.z0), -320) + 6, z1: 84.5 },       // where the player can go today
     spawn: { x: -24, z: 40.5, h: Math.PI / 2 },
     chunkOf: (x, z) => ({ cx: chunkX(x), cz: chunkZ(z) }),
@@ -169,8 +189,9 @@ export function createMap() {
     neighbourhoodAt(x, z) { const zn = zoneAt(x, z), h = zn && zn.hoods.find((hd) => x >= hd.x0 && x < hd.x1 && (hd.z0 === undefined || (z >= hd.z0 && z < hd.z1))); return h ? h.id : null; },
     isLand: (x, z) => { const q = quayAt(x, z); return q ? q > 0 : inRect(WORLD, x, z) && z <= SHORE; },
     depthAt: (x, z) => (map.isLand(x, z) ? 0 : Math.max(0, -map.heightAt(x, z))),
-    // ground height: kerbs, the promenade, the beach sloping under the sea. level is for decks, later.
-    heightAt(x, z) {
+    // ground height: kerbs, the promenade, the beach sloping under the sea; a deck or a ramp for a body on level 1 (decks.js)
+    heightAt(x, z, level) {
+      if (z < -1440 && z > -1520) { const d = decks.heightAt(x, z, level); if (d !== null) return d; }
       const q = quayAt(x, z);
       if (q < 0) return -6;
       if (q > 0 && z >= 44) return 0;
@@ -181,12 +202,15 @@ export function createMap() {
       const zn = zoneAt(x, z);              // a plaza paved over a closed street stands as high as the sidewalk
       return zn && zn.plazas && zn.plazas.some((r) => inRect(r, x, z)) ? CURB : 0;
     },
-    surfaceAt(x, z) {
+    surfaceAt(x, z, level) {
+      if (z < -1440 && z > -1520 && decks.heightAt(x, z, level) !== null) return 'deck';
       const q = quayAt(x, z);
       if (q) return q < 0 ? 'water' : map.heightAt(x, z) > 0.05 ? 'sidewalk' : 'road';
       if (z > SHORE) return 'water';
       if (z > 50) return 'sand';
-      if (!zoneAt(x, z)) return 'dirt';
+      const zn = zoneAt(x, z);
+      if (!zn) return 'dirt';
+      if (zn.surfaceAt) return zn.surfaceAt(x, z, map);
       return map.heightAt(x, z) > 0.05 ? 'sidewalk' : 'road';
     },
     blockAt,
@@ -212,7 +236,8 @@ export function createMap() {
         if (n && (n.d <= 25 || need === 'road')) {
           const p = n.piece, off = need === 'road' ? 0 : p.width / 2 + (need === 'curb' ? -1.2 : 1.5);
           const side = p.axis === 'ns' ? (x >= p.ax ? 1 : -1) : (z >= p.az ? 1 : -1);
-          out = p.axis === 'ns' ? { x: p.ax + side * off, z: n.z } : { x: n.x, z: p.az + side * off };
+          if (p.free) { const nx = -(p.bz - p.az) / p.len, nz = (p.bx - p.ax) / p.len, sd = (x - n.x) * nx + (z - n.z) * nz >= 0 ? 1 : -1; out = { x: n.x + nx * sd * off, z: n.z + nz * sd * off }; }
+          else out = p.axis === 'ns' ? { x: p.ax + side * off, z: n.z } : { x: n.x, z: p.az + side * off };
         }
       } else if (need === 'lot') {
         let bd = 25;

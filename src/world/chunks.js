@@ -46,12 +46,14 @@ export function createChunks({ scene, map, collide, props, decor, quality, event
     const gen = generatorFor(rect);
     job.set = takeSet(); job.dec = decor.open(k, cx, cz, rect);
     const o = job.o = { ...job.set, rnd: rng(chunk.seed), low: quality.level === 'low',
-      solid(x0, x1, z0, z1, h = 0) { collide.add(chunk.owner, { x0, x1, z0, z1, h }); },
+      solid(x0, x1, z0, z1, h = 0, level = 0) { collide.add(chunk.owner, { x0, x1, z0, z1, h, level }); },
       prop(kind, x, y, z, rot, opts) { const p = props.add(kind, x, y, z, rot, { ...opts, owner: chunk.owner }); if (p) chunk.props.push(p); return p; },
       decor: job.dec.add,
       object(m) { m.matrixAutoUpdate = false; chunk.objects.push(m); },
     };
-    job.it = gen ? gen.build(o, chunk, map, heroes) : null;     // land with nothing on it yet loads as an empty chunk
+    // the district's generator, then the raised roads that cross the chunk (gen/decks.js); land with neither loads as an empty chunk
+    const over = generators.decks && generators.decks.touches(rect) ? generators.decks : null;
+    job.it = gen && over ? (function* () { yield* gen.build(o, chunk, map, heroes); yield* over.build(o, chunk, map); })() : gen ? gen.build(o, chunk, map, heroes) : over ? over.build(o, chunk, map) : null;
     job.begun = true;
   }
   // one mesh a call, so no single piece of work is long; true when the chunk is in the scene
@@ -114,6 +116,7 @@ export function createChunks({ scene, map, collide, props, decor, quality, event
     if (job.i < job.list.length) {
       const k = job.list[job.i++], cx = k % 64, cz = Math.floor(k / 64), rect = map.chunkRect(cx, cz), gen = generatorFor(rect);
       if (gen && gen.shell) gen.shell({ B: shellB, W: shellW }, { cx, cz, rect }, map, heroes);
+      if (generators.decks && generators.decks.touches(rect)) generators.decks.shell({ B: shellB, W: shellW }, { cx, cz, rect }, map);
       return false;
     }
     const gk = job.gx + job.gz * 16, g = groups.get(gk) || { gx: job.gx, gz: job.gz, mesh: null };

@@ -13,7 +13,7 @@ export function createNav(map) {
   const ckey = (x, z) => { const c = map.chunkOf(x, z); return c.cx + c.cz * 64; };
   const put = (bucket, x, z, item) => { const k = ckey(x, z); if (!bucket.has(k)) bucket.set(k, []); bucket.get(k).push(item); };
   const node = (k) => {
-    if (!nodes.has(k)) { const m = map.nodes.get(k); nodes.set(k, { key: k, x: m.x, z: m.z, half: m.half, signal: m.signal, out: [], in: [], corners: {} }); }
+    if (!nodes.has(k)) { const m = map.nodes.get(k); nodes.set(k, { key: k, x: m.x, z: m.z, half: m.free ? { ns: 0, ew: 0 } : m.half, signal: m.signal, free: !!m.free, pieces: m.pieces.length, out: [], in: [], corners: {} }); }
     return nodes.get(k);
   };
   const streets = [];
@@ -25,16 +25,31 @@ export function createNav(map) {
     for (const [from, to] of [[A, B], [B, A]]) {
       const dx = to.x - from.x, dz = to.z - from.z, full = Math.hypot(dx, dz), fx = dx / full, fz = dz / full;
       // stop width / 2 + 2 short of each junction centre (the crossing road's half width)
-      const cross = p.axis === 'ns' ? 'ew' : 'ns', ta = from.half[cross] + 2, tb = to.half[cross] + 2;
+      // a free piece (decks.js, a suburb lane) runs joint to joint: it stops short only where roads meet
+      const cross = p.axis === 'ns' ? 'ew' : 'ns', trim = (n) => (n.free ? (p.free ? (n.pieces > 2 ? Math.min(6, p.len / 3) : 0) : 2) : (p.free ? Math.min(Math.max(n.half.ns, n.half.ew) + 2, p.len / 3) : n.half[cross] + 2));
+      const ta = trim(from), tb = trim(to);
+      if (p.oneWay && from !== A) continue;
       const signal = to.signal ? { id: to.key, axis: p.axis, offset: (Math.abs(to.x * 31 + to.z * 17) | 0) % 30 } : null;
-      OFFSETS[p.lanes].forEach((off, i) => {
+      (p.offsets || OFFSETS[p.lanes]).forEach((off, i) => {
         const ox = -fz * off, oz = fx * off;       // to the right of the way it runs
         const l = { id: `${p.roadId}:${from.key}>${to.key}${i ? '#' + i : ''}`, roadId: p.roadId, name: p.name, kind: p.kind, index: i, of: p.lanes,
           ax: from.x + ox + fx * ta, az: from.z + oz + fz * ta, bx: to.x + ox - fx * tb, bz: to.z + oz - fz * tb,
-          len: full - ta - tb, heading: Math.atan2(fx, fz), speed: p.speed, level: 0, next: [], signal, left: null, right: null, from, to, piece: p };
+          len: full - ta - tb, heading: Math.atan2(fx, fz), speed: p.speed, level: p.level || 0, next: [], signal, left: null, right: null, from, to, piece: p };
         lanes.push(l); byId.set(l.id, l); from.out.push(l); to.in.push(l);
         put(laneBucket, (l.ax + l.bx) / 2, (l.az + l.bz) / 2, l);
       });
+    }
+    // a free piece on the ground has a verge to walk on each side; they join end to end. Decks and ramps have none.
+    if (p.free) {
+      if (p.level || p.kind === 'street') continue;
+      const nx = -(p.bz - p.az) / p.len, nz = (p.bx - p.ax) / p.len;
+      for (const side of [-1, 1]) {
+        const off = side * (p.width / 2 + 1.5);
+        const w = { id: `${p.id}:${side > 0 ? 'r' : 'l'}`, kind: 'walk', roadId: p.roadId, ax: p.ax + nx * off, az: p.az + nz * off, bx: p.bx + nx * off, bz: p.bz + nz * off, len: p.len, next: [], crossing: false };
+        (A.corners['f' + side] ||= []).push(w); (B.corners['f' + side] ||= []).push(w);
+        walks.push(w); put(walkBucket, (w.ax + w.bx) / 2, (w.az + w.bz) / 2, w);
+      }
+      continue;
     }
     // sidewalks: one walking edge each side, width / 2 + 1.5 from the centre line
     for (const side of [-1, 1]) {
@@ -69,7 +84,7 @@ export function createNav(map) {
   for (const n of nodes.values()) {
     const at = { ne: [n.half.ns + 1.5, -n.half.ew - 1.5], nw: [-n.half.ns - 1.5, -n.half.ew - 1.5], se: [n.half.ns + 1.5, n.half.ew + 1.5], sw: [-n.half.ns - 1.5, n.half.ew + 1.5] };
     for (const [a, b] of [['nw', 'ne'], ['sw', 'se'], ['nw', 'sw'], ['ne', 'se']]) {
-      if (!n.corners[a] && !n.corners[b]) continue;
+      if (n.free || (!n.corners[a] && !n.corners[b])) continue;
       const w = { id: `x:${n.key}:${a}${b}`, kind: 'crossing', node: n.key, signal: n.signal, ax: n.x + at[a][0], az: n.z + at[a][1], bx: n.x + at[b][0], bz: n.z + at[b][1], next: [], crossing: true };
       w.len = Math.hypot(w.bx - w.ax, w.bz - w.az);
       (n.corners[a] ||= []).push(w); (n.corners[b] ||= []).push(w);

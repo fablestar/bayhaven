@@ -84,9 +84,11 @@ export function wallEnds(c, side, e = 0.06) {
 // ---------- road paint ----------
 
 function paint(o, p, map) {
-  const M = o.M, ns = p.axis === 'ns', a = (ns ? p.az : p.ax) + (p.a ? map.nodes.get(p.a).half[ns ? 'ew' : 'ns'] + 2.5 : 0);
-  const b = (ns ? p.bz : p.bx) - (p.b ? map.nodes.get(p.b).half[ns ? 'ew' : 'ns'] + 2.5 : 0), c = ns ? p.ax : p.az;
-  const offs = p.lanes === 1 ? [0] : [-4.8, 4.8];
+  if (p.free) return;
+  const half = (k) => { const n = map.nodes.get(k); return n.free ? 2 : n.half[ns ? 'ew' : 'ns'] + 2.5; };
+  const M = o.M, ns = p.axis === 'ns', a = (ns ? p.az : p.ax) + (p.a ? half(p.a) : 0);
+  const b = (ns ? p.bz : p.bx) - (p.b ? half(p.b) : 0), c = ns ? p.ax : p.az;
+  const offs = p.lanes === 1 ? [0] : p.lanes === 3 ? [-9.2, -5.6, 5.6, 9.2] : [-4.8, 4.8];
   for (let t = a; t + 3 <= b; t += 9) for (const off of offs) {
     if (ns) M.flat(c + off - 0.12, c + off + 0.12, t, t + 3, Y, DASH); else M.flat(t, t + 3, c + off - 0.12, c + off + 0.12, Y, DASH);
   }

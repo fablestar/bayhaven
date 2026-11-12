@@ -28,7 +28,7 @@ export function createCollide() {
         if (stamp[id] === tick) continue;
         stamp[id] = tick; tested++;
         if (data[o] > x1 || data[o + 1] < x0 || data[o + 2] > z1 || data[o + 3] < z0) continue;
-        if (level !== undefined && data[o + 11] !== level) continue;
+        if (data[o + 11] !== (level || 0) && level !== -1) continue;       // no level given means the ground; -1 asks for every level
         out[n++] = id;
       }
     }
@@ -151,7 +151,7 @@ export function createCollide() {
           const id = list[k], o = id * STRIDE;
           if (stamp[id] === tick) continue;
           stamp[id] = tick; tested++;
-          if ((level !== undefined && data[o + 11] !== level) || data[o + 10] < minH) continue;
+          if ((data[o + 11] !== (level || 0) && level !== -1) || data[o + 10] < minH) continue;
           // slab test in the box's own frame
           const cs = data[o + 8], sn = data[o + 9], rx = x0 - data[o + 4], rz = z0 - data[o + 5];
           const ox = rx * cs - rz * sn, oz = rx * sn + rz * cs, ex = dx * cs - dz * sn, ez = dx * sn + dz * cs;
