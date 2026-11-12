@@ -13,11 +13,11 @@ const PARTY = { id: 'rooftop-launch-party', near: { x: 52, z: -420 }, bpm: 104, 
 function pickRoof(map) {
   let best = null;
   for (const l of map.lots) {
-    if (l.zone !== 'meridian' || !l.tiers || l.hero || l.mast || l.helipad) continue;
+    if (l.zone !== 'meridian' || !l.tiers || l.hero || l.helipad) continue;
     const top = l.tiers.reduce((a, b) => (b.y1 > a.y1 ? b : a));
-    if (top.round || top.rot || top.x1 - top.x0 < 18 || top.z1 - top.z0 < 14) continue;
+    if (top.round || top.rot || top.x1 - top.x0 < 14 || top.z1 - top.z0 < 9) continue;
     const cx = (top.x0 + top.x1) / 2, cz = (top.z0 + top.z1) / 2;
-    const score = Math.hypot(cx - PARTY.near.x, cz - PARTY.near.z) + top.y1 * 1.5;
+    const score = Math.hypot(cx - PARTY.near.x, cz - PARTY.near.z) + top.y1 * 8;        // a low roof matters most: the stage should be seen from the street
     if (!best || score < best.score) best = { score, lot: l.id, x: cx, z: cz, y: top.y1, w: top.x1 - top.x0, d: top.z1 - top.z0 };
   }
   return best;

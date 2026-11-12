@@ -190,6 +190,8 @@ export default [
       t.expect(r.id, '==', 'rooftop-launch-party', 'the drop on build day 4');
       t.expect(r.district, '==', 'meridian', 'the roof is in Meridian');
       t.expect(r.roof.y, '>=', 10, 'height of the roof (m)');
+      t.expect(r.roof.y, '<=', 60, 'and low enough to see the stage from the street (m)');
+      t.expect(Math.hypot(r.roof.x - 52, r.roof.z + 320), '<=', 700, 'metres from the beach end of Coral Boulevard');
       t.expect(r.follows, '==', 'radio', 'the lights follow the radio');
       t.expect(r.peak, '>', 0.6, 'the lights flash on a kick'); t.expect(r.low, '<', 0.3, 'and fade between kicks');
       t.expect(r.beats, '>=', Math.floor(r.bpm / 60 * 3) - 1, 'beats counted in 3 s');
