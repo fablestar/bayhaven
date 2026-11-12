@@ -103,7 +103,7 @@ function paintLive(g, base, d, ms, reduce) {
   g.lineWidth = 2; g.beginPath(); g.arc(0, 0, 58, 0, 7); g.stroke();
   arcText(g, 'BAYHAVEN', 67, 0, 15); arcText(g, `DAY ${d.day} BUILD`, 67, Math.PI, 15);
   const word = d.failed ? 'Return to sender' : d.stamp || 'Delivered';
-  let px = 34; font(g, px, 900, true); while (g.measureText(word).width > 200 && px > 20) { px -= 2; font(g, px, 900, true); }
+  let px = 34; font(g, px, 900, true); while (g.measureText(word).width > (d.failed ? 176 : 200) && px > 18) { px -= 2; font(g, px, 900, true); }
   const tw = g.measureText(word).width;
   g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(word, 0, 1);
   g.lineWidth = 3;

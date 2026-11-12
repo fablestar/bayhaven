@@ -138,7 +138,7 @@ export default {
     }
 
     // ---- the HUD canvas: objective, timer, bar, subtitle ----
-    let box = null, subRect = null, layT = 0, objText = '', objOld = '', objT = -9, wasPainted = false, subWas = false, hidHints = false;
+    let objWidth = 0, box = null, subRect = null, layT = 0, objText = '', objOld = '', objT = -9, wasPainted = false, subWas = false, hidHints = false;
     function measure() {
       const Wd = window.innerWidth, Hd = window.innerHeight, k = clamp((Math.min(Wd, Hd) - 390) / 690, 0, 1), s = (p, d) => p + (d - p) * k, ins = hud.insets || { l: 0, t: 0, r: 0, b: 0 };
       const portraitMode = hud.mode === 'portrait';
@@ -156,11 +156,13 @@ export default {
       const any = !clip && (objText || now - objT < 0.5 || view.timer || view.bar || view.clock != null);
       g.save(); g.setTransform(dpr, 0, 0, dpr, 0, 0);
       if (any || wasPainted) g.clearRect(b.x - 6, b.y - 6, b.w + 12, b.h + 12);
-      wasPainted = !!any;
+      if (!!any !== wasPainted) { hud.show('drop', !any); if (!any && hud.refresh) hud.refresh(); }      // the day's drop line shares this corner
+      wasPainted = !!any; if (!objText) objWidth = 0;
       if (any) {
         stats.paints++;
         g.shadowColor = SHADOW; g.shadowBlur = 6; g.shadowOffsetY = 1; g.textBaseline = 'middle'; g.textAlign = 'left';
         const age = now - objT, mid = b.y + b.gap / 2;
+        font(g, b.objPx, 700, true); objWidth = objText ? Math.min(b.w - 18, g.measureText(objText).width) : 0;
         const drawLine = (text, dx, alpha, strike) => {
           if (!text || alpha <= 0) return;
           g.globalAlpha = alpha; font(g, b.objPx, 700, true);
@@ -246,8 +248,8 @@ export default {
         paint(performance.now() / 1000);
       },
       info() {
-        const rc = api.rects(), dpr = hud.canvas.width / window.innerWidth; let ink = -1;
-        try { const im = g.getImageData(Math.round(rc.objective.x * dpr), Math.round(rc.objective.y * dpr), Math.round(Math.min(rc.objective.w, 300) * dpr), Math.round(rc.objective.h * dpr)).data; ink = 0; for (let i = 3; i < im.length; i += 4) if (im[i] > 40) ink++; } catch (e) { ink = -1; }
+        api.frame(ctx.loop.time);                 // a check may ask between frames
+        const rc = api.rects(), ink = objWidth;
         return { objective: objText, objectiveInk: ink, timer: view.timer ? { ...view.timer } : null, clock: view.clock ?? null, bar: view.bar ? { ...view.bar } : null, cutscene: !!view.cutscene,
           markers: shown.map((q) => ({ id: q.id, kind: q.kind, x: q.x, z: q.z, r: q.r, colour: q.colour })), meshes: pool.filter((k) => k.grp.visible).length,
           blips: [...blips], route: routeKey, subtitle: m.dialogue && m.dialogue.current ? api.lastSub : null, portraits: Object.keys(portraits), card: card.info(), rects: rc, stats: { ...stats }, choice: choiceKey };

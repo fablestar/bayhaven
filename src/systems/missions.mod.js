@@ -22,6 +22,22 @@ export default {
     const byId = {}, list = [];
     for (const path in files) { const d = files[path].default; if (d && d.id && (d.tier || 'A') <= (ctx.quality.get('contentTier') || 'A')) { byId[d.id] = d; list.push(d); } }
     list.sort((a, b) => a.n - b.n);
+    // A seed that lands inside an ordinary building (the place it names is not built yet) is moved to the
+    // kerb lane of the nearest road, so its marker can be reached. A landmark's own lot is trusted.
+    function spot(at) {
+      const map = m.map, c = map.chunkOf(at.x, at.z), lots = map.lotsInChunk(c.cx, c.cz) || [];
+      const inside = lots.some((l) => l.body && !l.hero && !l.reserved && at.x > l.body.x0 - 1 && at.x < l.body.x1 + 1 && at.z > l.body.z0 - 1 && at.z < l.body.z1 + 1);
+      const r = inside && map.nearestRoad(at.x, at.z);
+      if (!r) return at;
+      const dx = at.x - r.x, dz = at.z - r.z, d = Math.hypot(dx, dz) || 1, k = Math.max(0, r.width / 2 - 2.5);
+      return { ...at, x: Math.round((r.x + dx / d * k) * 10) / 10, z: Math.round((r.z + dz / d * k) * 10) / 10, seed: { x: at.x, z: at.z } };
+    }
+    const moved = [];
+    for (const d of list) for (const st of d.steps) for (const key of ['at', 'to', 'from', 'spawn']) {
+      if (!st[key] || st[key].seed) continue;
+      const q = spot(st[key]);
+      if (q !== st[key]) { moved.push({ mission: d.id, step: d.steps.indexOf(st), key, seed: q.seed, x: q.x, z: q.z }); st[key] = q; }
+    }
     const actors = createActors(ctx);
     const M = S.mission; Object.assign(M, { id: null, step: 0, flags: {}, done: M.done || [], available: M.available || [] });
     const best = {};
@@ -119,10 +135,10 @@ export default {
       if (skipped || !m.dialogue || !m.dialogue.busy) complete();
     }
     function complete() {
-      const def = run.def, pays = def.pays || {}, cash = pays.cash || 0, eco = S.economy;
-      eco.followers = (eco.followers || 0) + (pays.followers || 0);
+      const def = run.def, pays = def.pays || {}, eco = S.economy, first = !M.done.includes(def.id);
+      const cash = first ? pays.cash || 0 : 0;                    // a mission pays once; a replay or a cup run is for the time
+      eco.followers = (eco.followers || 0) + (first ? pays.followers || 0 : 0);
       if (cash) { eco.cash = (eco.cash || 0) + cash; ev.emit('cash:changed', { cash: eco.cash, by: cash, why: 'mission' }); }
-      const first = !M.done.includes(def.id);
       if (first) M.done.push(def.id);
       M.available = M.available.filter((id) => id !== def.id);
       const was = best[def.id], record = was == null || run.t < was;
@@ -256,7 +272,7 @@ export default {
     }
 
     api = {
-      list, actors, best, numbers: NUM, view,
+      list, actors, best, numbers: NUM, view, moved,
       get: (id) => byId[id] || null,
       get active() { return run ? run.def.id : null; },
       get run() { return run; },
@@ -271,7 +287,7 @@ export default {
           objective: view.objective || '', seconds: run ? run.t : 0, stepSeconds: run ? run.stepT : 0, mode: run ? run.mode : null, checkpoint: run && run.cp ? run.cp.i : 0, retries: run ? run.retries : 0,
           counters: run ? { ...run.counters } : {}, flags: run ? { ...run.flags } : {}, ride: run ? run.ride : null, timer: view.timer || null, bar: view.bar || null,
           markers: (view.markers || []).map((q) => ({ ...q })), failed: run && run.failText, result: run ? run.result : null,
-          done: [...M.done], available: [...M.available], actors: actors.info(), missions: list.map((d) => d.id), best: { ...best } };
+          done: [...M.done], available: [...M.available], actors: actors.info(), missions: list.map((d) => d.id), best: { ...best }, moved };
       },
       update(dt) {
         lastDt = dt; ramT -= dt;
@@ -279,6 +295,10 @@ export default {
         if (clip && !clipWas) clipStage();
         clipWas = clip;
         actors.update(dt);
+        // STAND-IN: the traffic module stops altogether while a clip plays (it was written for empty streets), so a
+        // mission clip's truck would be neither drawn nor solid. Its step is run from here, with spawning off.
+        // For integration: src/vehicles/traffic.mod.js should keep stepping when the clip carries `mission`.
+        if (clip && run && m.traffic.held && m.traffic.update) { const was = m.traffic.enabled; m.traffic.enabled = false; m.traffic.update(dt, S.clock.hour); m.traffic.enabled = was; }
         if (!run) {
           // walking or driving into a start marker begins that mission; leave the marker before it can start again
           let inside = false;

@@ -2,6 +2,14 @@
 
 Built from the notes in `changelog/` by `tools/changelog.mjs`. Newest day first.
 
+## Day 6: Missions
+
+### D6-S1 · Missions
+
+**Shipped**
+
+(being written)
+
 ## Day 5: Heat
 
 ### D5-S1 · Heat

@@ -28,7 +28,7 @@ export default {
       text: 'Catch the tow truck.', hint: 'Handbrake for the sharp turn.',
       cues: [{ when: 'passes', actor: 'truck', at: { x: -1012, z: 37 }, r: 20, lines: 'light' }],
       fail: [{ when: 'ahead', target: 'truck', metres: 250, text: 'Marco got away.' }] },
-    { type: 'survive', until: { rams: 3, on: 'truck', minKmh: 15 }, bar: 'Hook', say: 'survive', set: { truck: { speed: 15.3, weave: 1.5 } },
+    { type: 'survive', until: { rams: 3, on: 'truck', minKmh: 15 }, bar: 'Hook', say: 'survive', set: { truck: { speed: 15.3, weave: 1.0 } },
       text: "Ram the truck's tail three times.",
       cues: [{ when: 'ram', n: 1, lines: 'ram1' }, { when: 'ram', n: 2, lines: 'ram2' }, { when: 'ram', n: 3, lines: 'ram3' }],
       fail: [{ when: 'reaches', target: 'truck', at: { x: 600, z: 37 }, r: 14, text: 'The truck reached Pier Road with the scooter.' }],

@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import { createParkedCar } from '../vehicles/models.js';
 
-const NUM = { accel: 4, brake: 8, look: 4, cornerAhead: 18, cornerAt: 0.3, dodge: 3.4, dodgeSee: 28, goneAt: 190, hookK: 30, hookC: 2.2, hookMax: 0.9 };
+const NUM = { accel: 4, brake: 8, look: 4, cornerAhead: 18, cornerAt: 0.3, dodge: 3.4, dodgeSee: 28, goneAt: 190, surge: 9, surgeFor: 5, surgeBrake: 2.2, slideKeep: 0.7, slideSide: 1.0, slideDrag: 5, hookK: 30, hookC: 2.2, hookMax: 0.9 };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const dark = new THREE.MeshBasicMaterial({ color: 0x3b3946 }), steel = new THREE.MeshBasicMaterial({ color: 0xc8ccd2 });
 
@@ -125,10 +125,7 @@ export function createActors(ctx) {
     if (o.leave) a.leaving = true;
     if (o.go) {
       a.after = o.after || 0;
-      if (a.free) {            // it was lying in the road: the path starts where it lies, and joins the file's line 12 m on
-        const full = makePath(a.def.path), s0 = nearestS(full, a.v.x, a.v.z), join = pointAt(full, s0 + 12, {}), rest = full.raw.filter((p, i) => full.cum[i] > s0 + 14);
-        a.path = makePath([[a.v.x, a.v.z], [join.x, join.z], ...rest]); a.s = 0; a.pendingFree = true;
-      }
+      if (a.free) a.rejoin = true;          // it is lying in the road: its path will start where it lies when it sets off
       a.going = true; a.done = false;
     } else if (o.go === false) a.going = false;
     return a;
@@ -141,14 +138,16 @@ export function createActors(ctx) {
     if (a.carried) { a.carried.removeFromParent(); a.carried.geometry.dispose(); a.carried = null; }
     a.carrying = false; a.swingV += 3;
     const def = (defs && defs[c.id]) || { model: c.model, paint: c.paint, path: [[a.x, a.z], [a.x + sn * 20, a.z + cs * 20]] };
-    const d = spawn(c.id, def, { x: a.x - sn * (a.v.hl + 1.3), z: a.z - cs * (a.v.hl + 1.3), h: a.h + 0.5, exact: true });
+    // it lands beside the carrier's tail, on the kerb side, and slides: moved by hand so it keeps sliding (the physics would brake it in half a second)
+    const d = spawn(c.id, def, { x: a.x - sn * (a.v.hl + 1.0) - cs * 1.3, z: a.z - cs * (a.v.hl + 1.0) + sn * 1.3, h: a.h + 0.5, exact: true });
     if (!d) return null;
-    d.free = true;
-    d.v.vf = Math.max(4, a.speed * 0.7); d.v.vl = 0; d.v.w = 1.2;
-    traffic.loosen(d.v);
+    const v0 = Math.max(4, a.speed * NUM.slideKeep);
+    d.slide = { vx: sn * v0 - cs * NUM.slideSide, vz: cs * v0 + sn * NUM.slideSide, w: 2.6 };
+    d.v.lean = 1.25; d.free = true;
     return d;
   }
-  const jolt = (name, by = 1.5) => { const a = list.get(name); if (a) { a.speed += by; a.swingV += 2.4; if (m.damage && m.damage.repair && a.v) m.damage.repair(a.v); } };
+  // a ram: the driver floors it for a moment, which opens the gap the next ram needs
+  const jolt = (name, by = NUM.surge) => { const a = list.get(name); if (a) { a.speed = Math.min(a.speed + by, a.want + by); a.surgeT = NUM.surgeFor; a.swingV += 2.4; if (m.damage && m.damage.repair && a.v) m.damage.repair(a.v); } };
 
   // ---- each step ----
   const P = {};
@@ -161,11 +160,16 @@ export function createActors(ctx) {
       if (fwd > v.hl && fwd < reach + o.hl && Math.abs(side) < v.hw + o.hw + 0.5 && (o.vf || 0) < a.speed - 2) near = Math.min(near, fwd - v.hl - o.hl);
     };
     for (const o of traffic.all) if (Math.abs(o.x - a.x) < 40 && Math.abs(o.z - a.z) < 40) see(o);
+    see(m.vehicles.player);
     return near;
   }
   function move(a, dt) {
     const v = a.v;
     if (a.after > 0) { a.after -= dt; return; }
+    if (a.rejoin) {              // the path starts where it lies, and joins the file's line 12 m on
+      const full = makePath(a.def.path), s0 = nearestS(full, v.x, v.z), join = pointAt(full, s0 + 12, {}), rest = full.raw.filter((p, i) => full.cum[i] > s0 + 14);
+      a.path = makePath([[v.x, v.z], [join.x, join.z], ...rest]); a.s = 0; a.speed = 0; a.rejoin = false; a.pendingFree = true; a.slide = null; v.lean = 0;
+    }
     if (a.pendingFree || v.kind !== 'wreck') { traffic.wreck(v); a.pendingFree = false; a.free = false; }       // taken back from the physics (a ram knocks it loose for a step)
     v.placed = true; v.parked = false; v.ridden = !!a.def.ridden;
     // speed: the order, less at a corner, less behind something it cannot pass
@@ -183,7 +187,8 @@ export function createActors(ctx) {
     }
     if (a.gap < 7) want = Math.min(want, Math.max(0, a.gap - 2) * 1.5);
     if (a.s >= a.path.total - 0.5) { want = 0; a.done = true; }
-    a.speed += clamp(want - a.speed, -NUM.brake * dt, NUM.accel * dt);
+    a.surgeT = Math.max(0, (a.surgeT || 0) - dt);
+    a.speed += clamp(want - a.speed, -(a.surgeT > 0 ? NUM.surgeBrake : NUM.brake) * dt, NUM.accel * dt);
     a.s = Math.min(a.path.total, a.s + a.speed * dt);
     a.dodge += clamp((a.dodgeWant || 0) - a.dodge, -4 * dt, 4 * dt);
     a.phase += dt * 1.5;
@@ -204,8 +209,15 @@ export function createActors(ctx) {
     const px = S.player.x, pz = S.player.z;
     for (const a of [...list.values()]) {
       if (!onStreet(a.v)) stand(a, a.x, a.z, a.h);              // the street was emptied under it (a clip, a quality change)
-      if (a.going) move(a, dt);
-      else {
+      if (a.going && !(a.slide && a.after > 0)) move(a, dt);
+      else if (a.slide) {
+        if (a.going) a.after -= dt;          // a dropped load sliding to rest, spinning, until it stops or something hits it
+        const v = a.v, q = a.slide, sp = Math.hypot(q.vx, q.vz), k = Math.max(0, sp - NUM.slideDrag * dt) / (sp || 1);
+        if (v.kind !== 'wreck' || sp < 0.3) { a.slide = null; if (v.kind === 'wreck') { v.vf = v.vl = 0; } continue; }
+        q.vx *= k; q.vz *= k; q.w *= 1 - 1.2 * dt;
+        a.x += q.vx * dt; a.z += q.vz * dt; a.h += q.w * dt; a.speed = sp;
+        v.x = a.x; v.z = a.z; v.h = a.h; v.y = map.heightAt(a.x, a.z); v.vf = 0; v.vl = 0; v.placed = true; v.lean = 1.25;
+      } else {
         const v = a.v; a.x = v.x; a.z = v.z; a.h = v.h; a.speed = Math.hypot(v.vf || 0, v.vl || 0);
         if (v.kind === 'wreck') v.placed = true;
         a.swingV += (-NUM.hookK * a.swing - NUM.hookC * a.swingV) * dt; a.swing = clamp(a.swing + a.swingV * dt, -NUM.hookMax, NUM.hookMax);
