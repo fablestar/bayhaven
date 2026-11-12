@@ -32,6 +32,39 @@ Built from the notes in `changelog/` by `tools/changelog.mjs`. Newest day first.
 - **No Squawk post or radio line** for the mission: the text is in the mission file (`react`), nothing reads it yet.
 - **No art requests** were made. A Remora tow truck model would beat the dressed-up Mullet.
 
+### D6-S2 · Phone and two missions
+
+**Shipped**
+
+- **The phone.** Press P (or the touch button) and it slides up from the bottom in 320 ms; the game keeps running behind it at 30% speed under a thin ink veil. P again, Esc, the Close bar or a tap outside puts it away. The screen is filled with the sky colours of the hour and has a bar with the clock, the weather and the unread count. It is 300 x 366 on a phone or a small window and 360 x 720 on a big one. No text under 14 px.
+- **A home screen of seven apps,** from a registry (`modules.phone.register`): Messages, Map, Camera, Squawk, Jobs, Stats, Settings, in the UI kit's colours with its icons drawn in code.
+- **Messages.** A mission on offer is a text from its giver, word for word from the bible (all 22 offer texts are in `src/content/messages.js`). It is pinned until the mission starts. A tap sets the GPS waypoint. **A new text arrives when a mission becomes available:** two blips at the sender's pitch and a pill above the minimap for 4 s ("Wendell: Mags. Bellweather's outfit owes me for 40 cars…").
+- **Map** opens the full map screen. **Settings** opens the pause menu's settings page. Both open over the phone and come back to it.
+- **Jobs and Stats** are lists other sessions fill: `phone.jobs.add(...)`, `phone.stats.add(...)`. Jobs is empty today and says so; Stats starts with five lines (missions done, followers, most viewers, photos, Squawk posts).
+- **Camera: photo mode.** Time stops. A free camera orbits the lead or their car inside the bible's limits (1.5 to 25 m away, 0.3 to 20 m up, 10 m of pan, 30 degrees of roll, field of view 20 to 100), kept 0.7 m off building walls. Three filters (Postcard, Sun-bleached, Neon Night), the HUD on or off, and the shot is saved as a PNG in a white postcard frame reading "Greetings from Bayhaven · Day 6", with the district and the game time in a stamp box and the day badge in the corner. It emits `photo:taken` with the landmarks in frame.
+- **The mission engine's photo step is real:** it waits for a photo with its subject in frame instead of counting standing there.
+- **Squawk.** The 40 tier A templates of the bible, word for word, picked by the bible's rules from 19 game events, with Teo's follower count at the top. Street, landmark, vehicle, score and viewer slots are filled from the game ("free water park on heron walk drive. thank you, mystery driver"). A mission's own post goes out first when it is finished.
+- **Mission 3, "Repo Woman":** three cars to take back for Wendell (a silver Tarpon at Hotel Alba in 2:30, a Mullet in a Palma Vieja alley in 3:00, an orange Wahoo at the Spire with Chad's black Grouper coming down Coral Boulevard after you), damage limits of 30, 30 and 60 percent, checkpoints after the first two, a white loaner Snook at the garage, all 39 lines. Pays $1,200.
+- **Mission 7, "As Seen on TV":** get three siren lights (honking beside the parked cruiser on Rosa Street is heat 1, and every 15 s of driving on adds one), stay on the Sheriff's show for 60 s (the clock stops below heat 3; drifts and jumps in view pay followers), then lose them. All 31 lines; the chat's lines go to the LIVE chat. Pays $2,500 and 5,000 followers.
+- **Finished early list:** the selfie flip (the Flip button or V), and replies from the Sheriff's account under a post that names it or a row it has a line for (seven lines, written for this in his producer's voice).
+
+**Not shipped**
+
+- **Chad does not ram or shoot.** He is a scripted Grouper that drives Coral Boulevard and Driftwood Street to the garage at 97 km/h. His pistol, side rams and "never enters the service bay" are not built. The Mullet drops no yard signs.
+- **The cars come to the forecourt, not the service bay.** The bay seed (332, -236) could not be reached in a check, so all three deliveries go to the forecourt seed, which the engine moves to the kerb at (340, -201.5), as mission 1 does. It goes back when Park & Sons has its own lot.
+- **Repo Woman has eleven engine steps, not the bible's ten:** the closing lines at the forecourt are a `say` step of their own, or the result card would cut them off after two.
+- **The cruiser on Rosa Street is a parked Tarpon in the Sheriff's colours,** with no light bar and no deputy in it: the cops module takes real units off the street at heat 0. The deputy's line plays when you honk.
+- **"A 2 s drift" is read as a drift worth 1,500 points** (the event carries a score, not a length). The near-miss bonus waits for an event nobody emits yet.
+- **Mission 7's card does not show peak viewers,** and the helicopter cam hint is not unlocked.
+- **Mags is still Teo's body,** as in D6-S1, and Teo is not in the passenger seat.
+- **Photo targets are simple:** a landmark or a mission subject counts when its centre is in the middle 60% of the frame, ahead of the camera and within 60 m. The "nothing blocks the view" ray and the "4% of the frame" rule are not done. No mission in the build uses a photo step yet; the step was checked on its own.
+- **Photo mode has no pinch or stick controls:** drag, wheel, keys and the five buttons only. A photo taken upright is 1080 x 1500 by the table but was not looked at.
+- **Messages: offers only.** Banter, the Regulars' texts and spam are not loaded. The inbox is not in the save file (offers are sent again on load). Mission 1's text is unread at the start, because mission 1 does not start by itself yet.
+- **No Garage app** (not on this session's list; the icon is drawn and the registry takes it). The pad's d-pad up does not open the phone (that is in `src/core/input.js`).
+- **`followers:milestone` is a stand-in:** nothing emits it, so the feed watches the count itself.
+- **The app's "back" is instant,** not the kit's 180 ms shrink.
+- **No art requests** were made.
+
 ## Day 5: Heat
 
 ### D5-S1 · Heat
