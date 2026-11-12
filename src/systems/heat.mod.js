@@ -116,7 +116,7 @@ export default {
     ev.on('weapon:fired', (e) => {
       const x = e && e.x !== undefined ? e.x : S.player.x, z = e && e.z !== undefined ? e.z : S.player.z, w = e && e.weapon;
       if (e && e.by && e.by !== 'player') return;
-      if (w === 'fists' || w === 'bat' || w === 'melee') return;
+      if (w === 'fists' || w === 'bat' || w === 'melee' || e.melee) return;
       crime(w === 'flare' ? 'flare' : 'gunfire', x, z, { weapon: w });
     });
     // a driven car taken: the vehicles lane emits its own `crime` (no points); it is worth 100 if seen

@@ -16,8 +16,9 @@ export default {
     const S = ctx.state, set = S.settings, ev = ctx.events;
     if (set.master === undefined) set.master = 1;
     if (set.sprintToggle === undefined) set.sprintToggle = false;
+    if (set.blood === undefined) set.blood = true;
     if (!ctx.params.get('test')) {
-      try { const kept = JSON.parse(localStorage.getItem(STORE) || '{}'); for (const k of ['master', 'music', 'sfx', 'reduceMotion', 'sprintToggle']) if (k in kept) set[k] = kept[k]; } catch { /* a broken store is ignored */ }
+      try { const kept = JSON.parse(localStorage.getItem(STORE) || '{}'); for (const k of ['master', 'music', 'sfx', 'reduceMotion', 'sprintToggle', 'blood']) if (k in kept) set[k] = kept[k]; } catch { /* a broken store is ignored */ }
     }
     const style = el('style'); style.textContent = MENU_CSS; document.head.appendChild(style);
     const veil = el('div'); veil.id = 'menu-veil';
@@ -28,7 +29,7 @@ export default {
     let wasScale = 1;
     function change(key, value) {
       set[key] = value;
-      if (!ctx.params.get('test')) { try { localStorage.setItem(STORE, JSON.stringify({ master: set.master, music: set.music, sfx: set.sfx, reduceMotion: set.reduceMotion, sprintToggle: set.sprintToggle })); } catch { /* private mode */ } }
+      if (!ctx.params.get('test')) { try { localStorage.setItem(STORE, JSON.stringify({ master: set.master, music: set.music, sfx: set.sfx, reduceMotion: set.reduceMotion, sprintToggle: set.sprintToggle, blood: set.blood })); } catch { /* private mode */ } }
       ev.emit('settings:changed', { key, value });
     }
 
@@ -120,6 +121,7 @@ export default {
       kit.slider(page, 'Effects volume', 'sfx');
       kit.toggle(page, 'Reduce motion', 'reduceMotion');
       kit.toggle(page, 'Sprint', 'sprintToggle', 'Tap to toggle', 'Hold');
+      kit.toggle(page, 'Blood', 'blood');
     } });
     menus.register({ id: 'controls', title: 'Controls', build(page) {
       const touch = window.matchMedia('(pointer: coarse)').matches, list = el('dl', 'menu-keys');

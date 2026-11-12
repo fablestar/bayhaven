@@ -85,7 +85,7 @@ export function createCopDraw(scene, cap) {
         // the wash on the road: wider and stronger at night
         if (on) { put(glow, ng, v.x, y + 0.06, v.z, 0, 15, 1, 15); tint(glow, ng++, phase === 0 ? pink : cyan, 0.16 + night * 0.34); }
         const d = u.deputy;
-        if (d && d.out && nd < cap) {
+        if (d && d.out && !d.down && nd < cap) {       // one who is down is drawn lying by the combat module
           put(deputies, nd++, d.x, (d.y || 0) + Math.abs(Math.sin(d.bob || 0)) * 0.05, d.z, d.h, 1, 1, 1);
         }
       }

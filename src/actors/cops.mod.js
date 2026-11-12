@@ -96,7 +96,7 @@ export default {
     // ---- sight ----
     function unitSees(u, x, z, range) {
       const v = u.v, d = u.deputy;
-      if (d.out) { const r = Math.hypot(x - d.x, z - d.z); if (r < range && (r < 3 || brain.clearLine(d.x, d.z, x, z))) return true; }
+      if (d.out && !d.down) { const r = Math.hypot(x - d.x, z - d.z); if (r < range && (r < 3 || brain.clearLine(d.x, d.z, x, z))) return true; }
       const dx = x - v.x, dz = z - v.z, r = Math.hypot(dx, dz);
       if (u.eye && r < u.eye) return brain.clearLine(v.x, v.z, x, z);               // the show truck's cameras look all round
       if (r > range) return false;
@@ -136,6 +136,7 @@ export default {
         }
         return;
       }
+      if (d.down) return;                      // put down by the combat module: he stays where he fell
       d.t += dt;
       let gx, gz, speed = COPS.walk, stopAt = 0.3;
       const far = u.post ? L === 0 : Math.hypot(p.x - v.x, p.z - v.z) > COPS.backAt || L === 0 || (!p.onFoot && p.speed > 6);       // at a roadblock he holds his ground

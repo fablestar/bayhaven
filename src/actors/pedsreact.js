@@ -50,7 +50,7 @@ export function createReactions(sim, { map, collide, events, state, rnd, setStat
   events.on('jump:landed', () => trigger(REACT.jump, 'stunt'));
   events.on('vehicle:blast', (d) => trigger(REACT.blast, 'crash', d && d.x, d && d.z));
   events.on('prop:broken', (d) => { if (d.kind === 'hydrant') trigger(REACT.geyser, 'stunt', d.x, d.z); });
-  events.on('weapon:fired', (d) => { const x = d && d.x !== undefined ? d.x : sim.focus.x, z = d && d.z !== undefined ? d.z : sim.focus.z;
+  events.on('weapon:fired', (d) => { if (d && d.melee) return; const x = d && d.x !== undefined ? d.x : sim.focus.x, z = d && d.z !== undefined ? d.z : sim.focus.z;
     for (const p of sim.list) if (p.street && Math.hypot(p.x - x, p.z - z) < REACT.shots) flee(p, x, z); });
   // Mags's Bus Driver Voice: everyone in earshot stands still
   events.on('player:ability', (d) => { if (d && /voice|horn/.test(String(d.id || d.ability || d.name || ''))) R.freeze(); });
