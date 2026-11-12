@@ -207,7 +207,7 @@ export function createActors(ctx) {
       if (a.going) move(a, dt);
       else {
         const v = a.v; a.x = v.x; a.z = v.z; a.h = v.h; a.speed = Math.hypot(v.vf || 0, v.vl || 0);
-        if (!a.free && v.kind === 'wreck') v.placed = true;
+        if (v.kind === 'wreck') v.placed = true;
         a.swingV += (-NUM.hookK * a.swing - NUM.hookC * a.swingV) * dt; a.swing = clamp(a.swing + a.swingV * dt, -NUM.hookMax, NUM.hookMax);
       }
       if (a.leaving && (a.done || Math.hypot(a.x - px, a.z - pz) > NUM.goneAt)) remove(a.name);
