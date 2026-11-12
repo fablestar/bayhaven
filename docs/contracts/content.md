@@ -29,3 +29,12 @@ Stand-ins I left: none.
 ## Weapons (session D5-S4: `weapons.js`)
 
 `WEAPONS.<id>` is `{ id, name, slot: 'hand' | 'sidearm' | 'long', damage, every, reach or range, holds, reload, spread, pack (rounds a pickup gives), most, sound, boxes [[along, up, side, length, height, width, colour]] }` for `fists noodle flamingo pistol flare smg shotgun`, with the numbers of plan/04 section 8 and the timings of the combat bible. Also `SLOTS`, `SLOT_NAMES`, `damageAt(id, metres)`, `WHO` (health, vest and colours for `player bystander guard crew deputy`), `COMBAT` (every number of the fight that is not one weapon's, the bill and the hospital point), `BARKS` (guards' lines: `callout cover flee hit search`) and `PICKUPS` (the three spots that stand in for shops).
+
+## Day 6 (session D6-S1)
+
+| Name | Signature | Meaning |
+|---|---|---|
+| `missions/<nn>-<id>.js` | the mission shape of schemas.md, plus `actors`, `offer`, `flags`, `hour`, and on steps `text say done cues set then fail` (see `systems.md`) | `01-final-notice.js`: mission 1, the six steps of plan/05 and all 40 lines of the script |
+| `cast.js` | `CAST.<id> { name, voice { wave, hz, ms, rate, end }, shirt, skin, hair, hat, hatColour }` · `VIA` | Who speaks: `mags teo marco wendell guide`. A speaker not listed gets their id as a name and a 220 Hz blip |
+| `drops/day-6.js` | the drop shape; returns `{ id, score { best, last, runs, finished, x, z }, running, ghost, recorded, begin(), label(), reset(), update(dt) }` · `CUP` | "The Getaway Cup": a mango ring at `(-1238, -208)` starts mission 1 in cup mode from its `enter` step. The run is sampled four times a second; the best is kept (in `localStorage` under `bayhaven.cup`, not with `?test=1`) and driven beside you as a see-through cyan coupe. `test.cup()`, `test.cup.begin()` |
+| `clips/day-6.js` | the clip shape plus `mission` | Golden hour at the plaza: the third ram, the scooter slides to the kerb, the cut to the postcard |
