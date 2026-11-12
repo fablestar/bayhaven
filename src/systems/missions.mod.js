@@ -8,6 +8,7 @@
 // mission:ram, mission:pickup, mission:switch, mission:retried, mission:ended.
 import { createActors } from './missions-actors.js';
 import { STEPS } from './missions-steps.js';
+import { USERS } from '../content/chat.js';
 
 const files = import.meta.glob('../content/missions/*.js', { eager: true });
 const clipFiles = import.meta.glob('../content/clips/day-*.js', { eager: true });
@@ -33,6 +34,7 @@ export default {
       return { ...at, x: Math.round((r.x + dx / d * k) * 10) / 10, z: Math.round((r.z + dz / d * k) * 10) / 10, seed: { x: at.x, z: at.z } };
     }
     const moved = [];
+    for (const d of list) for (const st of d.steps) for (const c of st.cars || []) c.at = spot(c.at);
     for (const d of list) for (const st of d.steps) for (const key of ['at', 'to', 'from', 'spawn']) {
       if (!st[key] || st[key].seed) continue;
       const q = spot(st[key]);
@@ -41,6 +43,7 @@ export default {
     const actors = createActors(ctx);
     const M = S.mission; Object.assign(M, { id: null, step: 0, flags: {}, done: M.done || [], available: M.available || [] });
     const best = {};
+    let chatN = 0;
     let run = null, armed = true, ramT = 0, lastDt = 1 / 60, clipWas = false, lastClip = null;
     const view = { active: false };
 
@@ -73,11 +76,24 @@ export default {
       fail: (text, when) => fail(text, when),
       enemy: (e) => (m.combat && m.combat.spawn ? m.combat.spawn(e.x, e.z, e.h || 0, { kind: e.kind || 'guard', hostile: true }) : null),
       emit: (n, p) => ev.emit(n, p),
+      horn: () => !!ctx.input.actions.horn, speed: () => Math.abs(S.player.speed || 0), cue: (when, n) => cue(when, n),
     };
+    // a step's `cars: [{ model, at, paint, accent }]`: stood on the street once (again if it has been taken)
+    function stand(c) {
+      const was = run.stood[c.model];
+      if (was && E.onStreet(was)) return;
+      run.stood[c.model] = E.standCar(c.model, c.at, c.paint, c.accent);
+    }
     function say(key, block) {
       const lines = run && run.def.lines && run.def.lines[key];
       if (!lines || !m.dialogue || run.mode === 'cup') return null;
-      return m.dialogue.play(lines, { block });
+      // `who: 'chat'` goes to the LIVE chat, not the subtitles; {vehicle} is the car being driven
+      const name = ((m.vehicles.models[car().model] || {}).name || 'car'), spoken = [];
+      for (const l of lines) {
+        if (l.who === 'chat') { if (m.live && m.live.say) m.live.say(USERS[chatN++ % USERS.length], l.text); }
+        else spoken.push(l.text.includes('{vehicle}') ? { ...l, text: l.text.replace('{vehicle}', name) } : l);
+      }
+      return spoken.length ? m.dialogue.play(spoken, { block }) : null;
     }
 
     // ---- checkpoints ----
@@ -108,6 +124,7 @@ export default {
       if (st.stage && st.stage.foot && run.mode !== 'cup') onFoot(st.stage.foot);
       if (st.hour != null && m.clock) m.clock.set(st.hour);
       if (st.heat && st.heat.set != null) E.setHeat(st.heat.set);
+      if (st.cars) for (const c of st.cars) stand(c);
       if (st.set) for (const name in st.set) actors.command(name, def.actors[name], st.set[name]);
       if (st.say) say(st.say, false);
       if (st.hint && run.mode !== 'cup') ev.emit('ui:hint', { id: `mission:${def.id}:${i}`, text: st.hint, seconds: 8 });
@@ -184,7 +201,7 @@ export default {
       if (!def) return false;
       if (run) end('restart');
       run = { def, mode: opts.mode || 'story', status: 'running', i: 0, step: null, stepT: 0, t: 0, st: {}, cues: new Set(), counters: { rams: 0, ...(opts.counters || {}) }, flags: clone(def.flags),
-        ride: null, retries: 0, timer: null, followers0: S.economy.followers || 0, result: null, failText: null, cp: null };
+        ride: null, stood: {}, retries: 0, timer: null, followers0: S.economy.followers || 0, result: null, failText: null, cp: null };
       M.id = id; M.flags = run.flags; M.step = 0;
       if (def.hour != null && m.clock && opts.hour !== false) m.clock.set(opts.hour ?? def.hour);
       for (const name in def.actors || {}) if (def.actors[name].carry || def.actors[name].spawn === true) actors.spawn(name, def.actors[name], opts.actors && opts.actors[name]);
@@ -227,7 +244,15 @@ export default {
     const failList = () => [...(run.def.fail || []), ...((run.step && run.step.fail) || [])];
     ev.on('vehicle:destroyed', (e) => { if (run && e && e.player !== false && failList().some((f) => f.when === 'vehicle:destroyed')) fail(failList().find((f) => f.when === 'vehicle:destroyed').text, 'vehicle:destroyed'); });
     ev.on('player:knockedout', () => { if (run) fail((failList().find((f) => f.when === 'knockedout') || {}).text || 'Knocked out.', 'knockedout'); });
-    ev.on('combat:down', (e) => { if (run && run.status === 'running' && stepKind().on && stepKind().on['combat:down']) stepKind().on['combat:down'](run.step, run, e); });
+    for (const name of ['combat:down', 'photo:taken']) ev.on(name, (e) => { if (run && run.status === 'running' && stepKind().on && stepKind().on[name]) stepKind().on[name](run.step, run, e, E); });
+    ev.on('player:booked', () => { const f = run && run.status === 'running' && failList().find((q) => q.when === 'booked'); if (f) fail(f.text || 'Booked.', 'booked'); });
+    // a step's `bonus: { 'drift:end': { min: { score }, followers } }`: followers for stunts while a deputy can see
+    for (const name of ['drift:end', 'jump:landed', 'traffic:nearmiss']) ev.on(name, (e) => {
+      const b = run && run.status === 'running' && run.step && run.step.bonus && run.step.bonus[name];
+      if (!b || !S.heat.seen || (b.min && Object.keys(b.min).some((k) => !(e && e[k] >= b.min[k])))) return;
+      S.economy.followers = (S.economy.followers || 0) + b.followers;
+      ev.emit('ui:toast', { text: `+${b.followers} followers`, seconds: 2, tone: 'gain' });
+    });
     ev.on('stealth:seen', () => { if (run) { run.counters.seen = (run.counters.seen || 0) + 1; const f = failList().find((q) => q.when === 'stealth:seen'); if (f && run.counters.seen >= (f.count || 1)) fail(f.text || 'They saw you.', 'stealth:seen'); } });
     ev.on('game:reset', () => { if (run && !document.body.classList.contains('clip')) end('reset'); });
     function watch() {

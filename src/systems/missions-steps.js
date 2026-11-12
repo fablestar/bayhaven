@@ -1,11 +1,22 @@
 // The fifteen step types of plan/05-content.md. Each is { enter, update → true when done, skip, exit, view }.
 // `E` is what the engine lends a step: the player's place, the scripted vehicles, dialogue, seat(),
 // fail(text), and `run` (counters, flags, the step's own scratch object `run.st`).
-// Stubs today: cutscene (its lines play as dialogue; one tap skips), photo (being at the spot is the photo),
-// switch (completes at once and records the lead). `goto` does not read `stealth` yet.
+// Stubs today: cutscene (its lines play as dialogue; one tap skips), switch (completes at once and records
+// the lead). `goto` does not read `stealth` yet. `photo` is real since D6-S2: it waits for the phone
+// camera's `photo:taken` with the step's `subject` in its list of targets.
 
 const near = (E, at, r) => Math.hypot(E.px() - at.x, E.pz() - at.z) <= r;
 const goal = (at, r, kind = 'goal') => ({ id: 'goal', x: at.x, z: at.z, r, kind });
+
+// "Honk at the cruiser": for a `heat` step with `honk: { at, r, every }`, a horn blast within r of the spot
+// sets heat 1, and every `every` seconds of not pulling over adds a level, up to the step's level.
+function honk(st, run, E, level) {
+  const h = st.honk;
+  if (level === 0) { run.st.honkT = 0; if (E.horn() && E.inCar() && near(E, h.at, h.r || 20)) { E.setHeat(1); E.cue('honk'); } return; }
+  if (level >= (st.level || 1)) return;
+  run.st.honkT = (run.st.honkT || 0) + (E.speed() > 2 ? E.dt : 0);
+  if (run.st.honkT >= (h.every || 15)) { run.st.honkT = 0; E.setHeat(level + 1); }
+}
 
 const talk = {
   enter(st, run, E) { run.st.talk = st.lines && run.mode !== 'cup' ? E.say(st.lines, true) : null; },
@@ -33,6 +44,8 @@ export const STEPS = {
   enter: {
     enter(st, run, E) {
       if (E.inCar() && run.ride === st.vehicle && E.car().model === st.vehicle) return;      // already in the mission's car (a retry)
+      const stood = run.stood && run.stood[st.vehicle];                                       // an earlier step's `cars` put it there
+      if (stood && E.onStreet(stood)) { run.st.v = stood; return; }
       if (st.spawn) run.st.v = E.standCar(st.vehicle, st.spawn, st.paint, st.accent);
     },
     update(st, run, E) {
@@ -117,16 +130,26 @@ export const STEPS = {
     },
   },
 
-  // STUB until photo mode (D6-S2): standing at the spot counts as the photo
+  // The phone camera's photo:taken lists what was in frame. `subject` is the name wanted (none: any photo),
+  // `at` is where the subject is (the camera asks the view for it), `from` is where to stand, if it matters.
   photo: {
-    update(st, run, E) { const at = st.from || st.at; return !at || near(E, at, st.r || 15); },
-    view(st) { const at = st.from || st.at; return at ? { markers: [goal(at, st.r || 15)] } : {}; },
+    update(st, run) { return !!run.st.shot; },
+    on: { 'photo:taken'(st, run, e, E) {
+      if (st.from && !near(E, st.from, st.r || 15)) return;
+      if (!st.subject || ((e && e.targets) || []).includes(st.subject)) run.st.shot = true;
+    } },
+    view(st) {
+      const at = st.from || st.at, v = at ? { markers: [goal(at, st.from ? st.r || 15 : 3)] } : {};
+      if (st.subject && st.at) v.photo = { id: st.subject, x: st.at.x, z: st.at.z, y: st.at.y ?? 1.5 };
+      return v;
+    },
   },
 
   heat: {
     enter(st, run) { run.st.held = 0; },
     update(st, run, E) {
       const level = E.heat(), want = st.want || 'reach';
+      if (st.honk) honk(st, run, E, level);
       if (want === 'reach') return level >= (st.level || 1);
       if (want === 'clear') return level === 0 && run.stepT > 0.2;
       run.st.held = level >= (st.level || 1) ? run.st.held + E.dt : st.reset ? 0 : run.st.held;
@@ -136,16 +159,22 @@ export const STEPS = {
     view(st, run) { return st.want === 'hold' ? { timer: { left: Math.max(0, (st.seconds || 30) - run.st.held), total: st.seconds || 30, good: true } } : {}; },
   },
 
+  // `atHeat: n`: the clock only runs while heat is n or more
   survive: {
-    update(st, run) { return st.until && st.until.rams ? run.counters.rams >= st.until.rams : run.stepT >= (st.seconds || 30); },
-    skip(st, run) { if (st.until && st.until.rams) run.counters.rams = st.until.rams; },
+    enter(st, run) { run.st.t = 0; },
+    update(st, run, E) {
+      if (st.until && st.until.rams) return run.counters.rams >= st.until.rams;
+      if (!st.atHeat || E.heat() >= st.atHeat) run.st.t += E.dt;
+      return run.st.t >= (st.seconds || 30);
+    },
+    skip(st, run) { if (st.until && st.until.rams) run.counters.rams = st.until.rams; run.st.t = 1e9; },
     view(st, run, E) {
       if (st.until && st.until.rams) {
         const a = E.actor(st.until.on), v = { bar: { label: st.bar || 'Rams', value: Math.min(run.counters.rams, st.until.rams), of: st.until.rams } };
         if (a) v.markers = [{ id: 'target', x: a.x, z: a.z, kind: 'target', label: a.def.label }];
         return v;
       }
-      return { timer: { left: Math.max(0, (st.seconds || 30) - run.stepT), total: st.seconds || 30, good: true } };
+      return { timer: { left: Math.max(0, (st.seconds || 30) - (run.st.t || 0)), total: st.seconds || 30, good: true, held: !!st.atHeat && E.heat() < st.atHeat } };
     },
   },
 

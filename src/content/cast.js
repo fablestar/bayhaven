@@ -7,6 +7,9 @@ export const CAST = {
   teo:   { name: 'Teo',   voice: { wave: 'sine',     hz: 260, ms: 50, rate: 13, end: 0.12 },  shirt: '#3fd6c8', skin: '#c9905f', hair: '#f6eaa6', hat: null,       hatColour: null },
   marco: { name: 'Marco', voice: { wave: 'square',   hz: 140, ms: 65, rate: 8,  end: -0.04 }, shirt: '#ffa02e', skin: '#d9a273', hair: '#3b2a20', hat: 'cap',      hatColour: '#150f3d' },
   wendell: { name: 'Wendell', voice: { wave: 'triangle', hz: 120, ms: 80, rate: 7, end: -0.05 }, shirt: '#5a7fb8', skin: '#8a5a3c', hair: '#c8ccd2', hat: 'cap', hatColour: '#ff5a5a' },
+  chad:  { name: 'Chad',  voice: { wave: 'square',   hz: 155, ms: 60, rate: 12, end: 0.06 },  shirt: '#1a1a22', skin: '#e6b89c', hair: '#c9a24a', hat: null,       hatColour: null },
+  rucker: { name: 'Sheriff Rucker', voice: { wave: 'sawtooth', hz: 110, ms: 75, rate: 10, end: 0.1 }, shirt: '#1fb5a8', skin: '#d8a888', hair: '#8a8f98', hat: 'cap', hatColour: '#fff1c9' },
+  deputy: { name: 'Deputy', voice: { wave: 'triangle', hz: 165, ms: 65, rate: 9, end: 0.05 }, shirt: '#1fb5a8', skin: '#b98a66', hair: '#3b2a20', hat: 'cap',     hatColour: '#150f3d' },
   guide: { name: 'Guide', voice: { wave: 'sine',     hz: 300, ms: 55, rate: 11, end: 0.1 },   shirt: '#3fb86a', skin: '#e3b08a', hair: '#7a4a20', hat: null,       hatColour: null },
 };
 
