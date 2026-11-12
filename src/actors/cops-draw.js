@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { MeshBuilder, glowTexture } from '../gfx/builder.js';
 
 export const LIVERY = { white: 0xf2f2ea, teal: 0x14b0a5, pink: 0xff4fa8, cyan: 0x29e6ff, bar: 0x23233a };
+const BAR = [-0.18, 1.58, 0.31];       // a cruiser's light bar: z, y, half the gap between the lamps
 const BODY = { hw: 0.895, y0: 0.44, y1: 0.9, roof: 1.46, zf: 2.26, zr: -2.24 };     // the Tarpon's sheet
 
 function liveryGeometry() {
@@ -70,15 +71,16 @@ export function createCopDraw(scene, cap) {
       for (const u of units) {
         const v = u.v; if (!v || n >= cap) continue;
         const c = Math.cos(v.h), s = Math.sin(v.h), y = v.y || 0;
-        put(livery, n++, v.x, y, v.z, v.h, 1, 1, 1);
+        const bar = u.bar || BAR;
+        if (!u.kind || u.kind === 'cruiser') put(livery, n++, v.x, y, v.z, v.h, 1, 1, 1);        // the other kinds draw their own bodywork
         // the bar: pink and cyan take turns, five flashes a second at heat 3, half that below
         const phase = Math.floor(time * (u.fast ? 5 : 2.5) + u.id * 0.5) % 2, on = u.lit ? 1 : 0;
         for (const side of [1, -1]) {
-          const lx = side * 0.31, lz = -0.18, bright = on ? ((side > 0) === (phase === 0) ? 1.6 : 0.25) : 0.3;
+          const lx = side * bar[2], lz = bar[0], bright = on ? ((side > 0) === (phase === 0) ? 1.6 : 0.25) : 0.3;
           const x = v.x + lx * c + lz * s, z = v.z - lx * s + lz * c;
-          put(lamps, nl, x, y + BODY.roof + 0.12, z, v.h, 1, 1, 1);
+          put(lamps, nl, x, y + bar[1], z, v.h, 1, 1, 1);
           tint(lamps, nl++, side > 0 ? pink : cyan, bright);
-          if (on && bright > 1) { put(glow, ng, x, y + BODY.roof + 0.2, z, 0, 2.6, 1, 2.6); tint(glow, ng++, side > 0 ? pink : cyan, 0.7); }
+          if (on && bright > 1) { put(glow, ng, x, y + bar[1] + 0.08, z, 0, 2.6, 1, 2.6); tint(glow, ng++, side > 0 ? pink : cyan, 0.7); }
         }
         // the wash on the road: wider and stronger at night
         if (on) { put(glow, ng, v.x, y + 0.06, v.z, 0, 15, 1, 15); tint(glow, ng++, phase === 0 ? pink : cyan, 0.16 + night * 0.34); }

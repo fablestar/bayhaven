@@ -4,7 +4,10 @@
 // it and the fleet draws its body); this module drives it with the pursuit brain (cops-brain.js)
 // through the same handling step as the player's car. Knocked hard, traffic takes it for a few
 // seconds as a loose body; when it has come to rest the brain has it again.
-// Public object: { units, sees(x, z, range), unitAt(x, z, r), nearest(), nearestLit(), stage(n), numbers, stats }.
+// Other kinds of unit (the Sheriff's SUVs, tactical vans and the show truck: cops-heavy.mod.js) are rows
+// added to `kinds`; `plan(level)` says how many of each to send, and a unit with a `post` stands where it is.
+// Public object: { units, sees(x, z, range), unitAt(x, z, r), nearest(), nearestLit(), stage(n), numbers, stats,
+//   kinds, plan, add(x, z, h, speed, kind), remove(unit), count(kind), onCamera(x, z), clearLine }.
 // Emits cop:dispatched, cop:deputy { out }, cop:fired, combat:hit (a deputy's shot that landed).
 import { SURFACES } from '../vehicles/handling.js';
 import { overlap, resolve, bumpWorld } from '../vehicles/crash.js';
@@ -12,7 +15,7 @@ import { createCopDraw, LIVERY } from './cops-draw.js';
 import { createBrain, BRAIN } from './cops-brain.js';
 
 export const COPS = { want: [0, 1, 3, 5, 5, 5], ring: [120, 260], first: [105, 170], gone: 400, fill: [0, 4, 3, 2.5, 2, 2], arc: -0.17,
-  walk: 1.7, run: 3.6, door: 1.5, bookAfter: 3, backAt: 30, fireEvery: 1.4, fireReach: 40, hit: 0.35, damage: 9, footCap: [3, 4, 6] };
+  walk: 1.7, run: 3.6, door: 1.5, bookAfter: 3, backAt: 30, fireEvery: 1.4, fireReach: 40, reach: [0, 0, 0, 40, 50, 60], dive: 15, hit: 0.35, damage: 9, footCap: [3, 4, 6] };
 
 let cops = null;
 export default {
@@ -24,7 +27,10 @@ export default {
     const rnd = () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
     const cap = ctx.quality.TABLE && ctx.quality.TABLE.copCap ? ctx.quality.TABLE.copCap[2] : 12;
     const draw = createCopDraw(ctx.scene, cap), brain = createBrain({ nav, collide, map, rnd });
-    const units = [], near = [], stats = { spawned: 0, removed: 0, rams: 0, shots: 0, hits: 0, booked: 0, readopted: 0, tries: 0, deputiesOut: 0 };
+    const units = [], near = [], stats = { spawned: 0, removed: 0, rams: 0, shots: 0, hits: 0, booked: 0, readopted: 0, tries: 0, deputiesOut: 0, dives: 0 };
+    // a kind of unit: the model it is, its paint, where its light bar sits [z, y, half gap], and (for the heavy ones) its size, mass, top speed, role and sight
+    const KINDS = { cruiser: { model: 'tarpon', paint: LIVERY.white, accent: LIVERY.teal } };
+    const count = (kind) => units.reduce((n, u) => n + (u.kind === kind ? 1 : 0), 0);
     const env = { surfaceAt: () => SURFACES.road, collide: (v) => { bumpWorld(v, collide); }, emit() {} };
     const W = { p: { x: 0, z: 0, fx: 0, fz: 1, lx: 1, lz: 0, vx: 0, vz: 0, speed: 0, onFoot: false, top: 40 }, known: false, last: S.heat.last, level: 0, time: 0 };
     let time = 0, fillT = 0, sightT = 0, roleT = 0, nextId = 1, bookT = 0, waitT = 0, staged = 0;
@@ -42,11 +48,16 @@ export default {
       if ((dx * cam.fx + dz * cam.fz) / d < cam.cos) return false;
       return brain.clearLine(cam.x, cam.z, x, z);
     }
-    function dress(v) { Object.assign(v, { paint: LIVERY.white, accent: LIVERY.teal, parked: false, placed: true, cop: true, spin: v.spin || 0 }); return v; }
-    function add(x, z, h, speed = 0) {
-      const v = dress(m.vehicles.spawn('tarpon', x, z, h));
+    function dress(v, K = KINDS.cruiser) {
+      Object.assign(v, { paint: K.paint, accent: K.accent, parked: false, placed: true, cop: true, spin: v.spin || 0 });
+      if (K.hw) { v.hw = K.hw; v.hl = K.hl; v.r = Math.hypot(K.hw, K.hl); }
+      if (K.mass) v.mass = K.mass;
+      return v;
+    }
+    function add(x, z, h, speed = 0, kind = 'cruiser') {
+      const K = KINDS[kind] || KINDS.cruiser, v = dress(m.vehicles.spawn(K.model, x, z, h), K);
       v.vf = speed;
-      const u = { id: nextId++, v, role: 'chase', state: 'chase', lit: true, fast: false, sees: false, inp: { steer: 0, gas: 0, brake: 0, handbrake: false },
+      const u = { id: nextId++, v, kind: KINDS[kind] ? kind : 'cruiser', bar: K.bar, eye: K.eye, top: K.top, fixed: K.role, post: null, role: 'chase', state: 'chase', lit: true, fast: false, sees: false, inp: { steer: 0, gas: 0, brake: 0, handbrake: false },
         at: { x: 0, z: 0, set(ax, az) { this.x = ax; this.z = az; return this; } }, route: null, routeI: 0, routeT: 0, routeTo: { x: 0, z: 0 }, corner: false,
         stuckT: 0, revT: 0, revSteer: 1, ramT: 0, ramUntil: 0, ramming: false, rams: 0, boost: 0, goal: null, goalT: 0, searched: false, slot: 0, speed: 0, born: time, stillT: 0,
         deputy: { out: false, x: 0, z: 0, y: 0, h: 0, bob: 0, state: 'in', t: 0, fireT: 0, shots: 0 } };
@@ -87,6 +98,7 @@ export default {
       const v = u.v, d = u.deputy;
       if (d.out) { const r = Math.hypot(x - d.x, z - d.z); if (r < range && (r < 3 || brain.clearLine(d.x, d.z, x, z))) return true; }
       const dx = x - v.x, dz = z - v.z, r = Math.hypot(dx, dz);
+      if (u.eye && r < u.eye) return brain.clearLine(v.x, v.z, x, z);               // the show truck's cameras look all round
       if (r > range) return false;
       if (r < 4) return true;
       if ((dx * Math.sin(v.h) + dz * Math.cos(v.h)) / r < COPS.arc) return false;      // 100 degrees either side of the nose
@@ -96,9 +108,10 @@ export default {
 
     // ---- roles: nearest chases (or pulls over at heat 1), second cuts off, third rams; three near a slow player box in ----
     function assign() {
-      const p = W.p, L = W.level, list = units.filter((u) => u.v.kind !== 'loose' && !u.deputy.out).sort((a, b) => a.d - b.d);
+      const p = W.p, L = W.level, list = units.filter((u) => u.v.kind !== 'loose' && !u.deputy.out && !u.post).sort((a, b) => a.d - b.d);
       const close = list.filter((u) => u.d < 45).length, boxing = L >= 2 && close >= 3 && p.speed < BRAIN.boxBelow && p.speed > 1 && !p.onFoot;
       list.forEach((u, i) => {
+        if (u.fixed) { u.role = u.fixed; u.slot = 1; return; }                       // the show truck only films: alongside, never behind
         if (L === 1) u.role = 'pullover';
         else if (boxing && i < 3) { u.role = 'box'; u.slot = i; }
         else if (u.role === 'box' && p.speed < BRAIN.boxOff && p.speed > 1 && i < 3) { u.slot = i; }
@@ -116,7 +129,7 @@ export default {
       const out = units.reduce((n, o) => n + (o.deputy.out ? 1 : 0), 0);
       if (!d.out) {
         const stopped = Math.abs(v.vf) < 0.6 && v.kind !== 'loose';
-        u.stillT = stopped && u.state === 'stop' && u.d < COPS.backAt - 3 ? u.stillT + dt : 0;
+        u.stillT = stopped && u.state === 'stop' && u.d < (u.post ? 90 : COPS.backAt - 3) ? u.stillT + dt : 0;
         if (u.stillT > 0.5 && out < footCap() && L > 0) {
           Object.assign(d, { out: true, x: doorX, z: doorZ, y: v.y || 0, h: v.h, state: 'out', t: 0, fireT: 0.8 + rnd() * 0.8 });
           stats.deputiesOut++; ev.emit('cop:deputy', { id: u.id, out: true, x: d.x, z: d.z });
@@ -125,7 +138,7 @@ export default {
       }
       d.t += dt;
       let gx, gz, speed = COPS.walk, stopAt = 0.3;
-      const far = Math.hypot(p.x - v.x, p.z - v.z) > COPS.backAt || L === 0 || (!p.onFoot && p.speed > 6);
+      const far = u.post ? L === 0 : Math.hypot(p.x - v.x, p.z - v.z) > COPS.backAt || L === 0 || (!p.onFoot && p.speed > 6);       // at a roadblock he holds his ground
       if (far || d.state === 'back') {
         if (d.state !== 'back') { d.state = 'back'; d.t = 0; }
         gx = doorX; gz = doorZ; speed = COPS.run;
@@ -143,6 +156,15 @@ export default {
         const ax = v.x - p.x, az = v.z - p.z, al = Math.hypot(ax, az) || 1;
         gx = v.x + ax / al * 1.7 + c * 0.9; gz = v.z + az / al * 1.7 - s * 0.9; d.state = 'cover';
       }
+      // a car coming at him inside 15 m: he dives out of its way
+      if (u.post && d.near < COPS.dive && !p.onFoot && p.speed > 6 && d.state !== 'back') {
+        const side = (d.x - p.x) * p.lx + (d.z - p.z) * p.lz >= 0 ? 1 : -1;
+        if (!d.diving) { d.diving = true; stats.dives++; ev.emit('cop:dive', { id: u.id, x: d.x, z: d.z }); }
+        d.x += p.lx * side * 7 * dt; d.z += p.lz * side * 7 * dt; d.bob += dt * 24; d.state = 'dive';
+        d.near = Math.hypot(p.x - d.x, p.z - d.z);
+        return;
+      }
+      d.diving = false;
       const dx = gx - d.x, dz = gz - d.z, dist = Math.hypot(dx, dz);
       if (dist > stopAt) { const k = Math.min(dist - stopAt, speed * dt) / dist; d.x += dx * k; d.z += dz * k; d.h = Math.atan2(dx, dz); d.bob += dt * speed * 4; }
       else { d.h = Math.atan2(p.x - d.x, p.z - d.z); d.bob = 0; }
@@ -152,12 +174,12 @@ export default {
         d.h = Math.atan2(p.x - d.x, p.z - d.z);
         d.fireT -= dt;
         const flags = (S.mission.flags && S.mission.flags.heat) || {};
-        if (d.fireT <= 0 && d.near < COPS.fireReach && S.heat.seen && !flags.holdFire && brain.clearLine(d.x, d.z, p.x, p.z)) {
+        if (d.fireT <= 0 && d.near < (COPS.reach[L] || COPS.fireReach) && S.heat.seen && !flags.holdFire && brain.clearLine(d.x, d.z, p.x, p.z)) {
           d.fireT = COPS.fireEvery * (0.8 + rnd() * 0.4); d.shots++; stats.shots++;
           const hit = rnd() < COPS.hit;
           if (m.fx && m.fx.sparks) m.fx.sparks(d.x + Math.sin(d.h) * 0.6, d.y + 1.3, d.z + Math.cos(d.h) * 0.6, Math.sin(d.h), Math.cos(d.h), 4);
           if (hit && m.fx && m.fx.sparks) m.fx.sparks(p.x, 0.8, p.z, -Math.sin(d.h), -Math.cos(d.h), 6);
-          ev.emit('cop:fired', { id: u.id, x: d.x, z: d.z, tx: p.x, tz: p.z, hit, weapon: 'pistol' });
+          ev.emit('cop:fired', { id: u.id, x: d.x, z: d.z, tx: p.x, tz: p.z, hit, weapon: u.kind === 'van' ? 'smg' : 'pistol' });
           if (hit) { stats.hits++; ev.emit('combat:hit', { target: 'player', by: 'deputy', weapon: 'pistol', damage: p.onFoot ? COPS.damage : 4, x: p.x, z: p.z }); }
         }
       }
@@ -168,10 +190,11 @@ export default {
       u.d = Math.hypot(p.x - v.x, p.z - v.z); u.speed = Math.hypot(v.vf, v.vl);
       u.lit = W.level > 0; u.fast = W.level >= 3;
       if (v.kind === 'loose') { u.stillT = 0; return; }           // spun out: traffic has it until it rests
-      if (u.deputy.out) { u.inp.gas = 0; u.inp.steer = 0; u.inp.brake = v.vf > 0.4 ? 1 : 0; u.inp.handbrake = true; u.state = 'stop'; }
+      if (u.deputy.out || u.post) { u.inp.gas = 0; u.inp.steer = 0; u.inp.brake = v.vf > 0.4 ? 1 : 0; u.inp.handbrake = true; u.state = 'stop'; }
       else brain.think(u, W, dt);
       // the catch-up allowance: a unit far behind is held to at least 1.08 times the player's speed
       if (u.boost > 0 && v.vf > 8 && v.vf < u.boost && Math.abs(v.steer) < 0.25) v.vf += 5 * dt;
+      if (u.top && v.vf > u.top) v.vf = u.top;
       v.drive(u.inp, env);
       v.braking = u.inp.brake > 0; v.spin += (v.vf / 0.33) * dt; v.y = map.heightAt(v.x, v.z);
       if (u.ramming) stats.rams = Math.max(stats.rams, u.rams);
@@ -186,7 +209,7 @@ export default {
     }
 
     cops = {
-      units, numbers: COPS, brain: BRAIN, stats, draw, sees,
+      units, numbers: COPS, brain: BRAIN, stats, draw, sees, kinds: KINDS, plan: null, add, remove, count, onCamera, clearLine: brain.clearLine, roadPoint: brain.roadPoint,
       // the unit whose body is at a spot (the heat module asks after a crash)
       unitAt(x, z, r = 4.5) { for (const u of units) if (Math.hypot(u.v.x - x, u.v.z - z) < r + u.v.hl) return { id: u.id, ramming: u.ramming || time < u.ramUntil + 0.6, speed: u.speed, state: u.state }; return null; },
       nearest() { let best = 1e9; for (const u of units) if (u.state !== 'leave') best = Math.min(best, u.d === undefined ? 1e9 : u.d); return best; },
@@ -205,7 +228,7 @@ export default {
         return units.length;
       },
       clear() { for (const u of units.slice()) remove(u); },
-      list: () => units.map((u) => ({ id: u.id, x: u.v.x, z: u.v.z, h: u.v.h, v: u.speed, d: u.d, role: u.role, state: u.state, lit: u.lit, loose: u.v.kind === 'loose', sees: u.sees,
+      list: () => units.map((u) => ({ id: u.id, kind: u.kind, post: !!u.post, x: u.v.x, z: u.v.z, h: u.v.h, v: u.speed, d: u.d, role: u.role, state: u.state, lit: u.lit, loose: u.v.kind === 'loose', sees: u.sees,
         rams: u.rams, deputy: u.deputy.out ? { x: u.deputy.x, z: u.deputy.z, state: u.deputy.state, near: u.deputy.near, shots: u.deputy.shots } : null })),
       update(dt) {
         time += dt; W.time = time;
@@ -219,24 +242,27 @@ export default {
         for (let i = units.length - 1; i >= 0; i--) {
           const u = units[i];
           if (inTraffic(u.v)) continue;
-          if (!onFoot && Math.hypot(u.v.x - car.x, u.v.z - car.z) < 1.5 && car.paint === LIVERY.white) { units.splice(i, 1); stats.removed++; continue; }
-          const old = u.v; u.v = dress(m.vehicles.spawn('tarpon', old.x, old.z, old.h));
+          if (!onFoot && Math.hypot(u.v.x - car.x, u.v.z - car.z) < 1.5 && car.paint === KINDS[u.kind].paint) { units.splice(i, 1); stats.removed++; continue; }
+          const old = u.v; u.v = dress(m.vehicles.spawn(KINDS[u.kind].model, old.x, old.z, old.h), KINDS[u.kind]);
           Object.assign(u.v, { vf: old.vf, vl: old.vl, w: old.w, steer: old.steer, gear: old.gear }); stats.readopted++;
         }
         if (traffic.held) for (const u of units) if (!traffic.all.includes(u.v)) traffic.all.push(u.v);       // traffic sleeps through a clip; the fleet still draws these
         // dispatch
-        const want = Math.min(copCap(), COPS.want[L] || 0);
-        if (L > 0 && units.length < want && !m.heat.hold && Math.hypot(W.last.x - p.x, W.last.z - p.z) < 300) {
+        // how many, and which kind is short: cruisers by level, or whatever the plan says (heat 4 and 5)
+        let want = Math.min(copCap(), COPS.want[L] || 0), kind = 'cruiser';
+        const plan = cops.plan ? cops.plan(L) : null;
+        if (plan) { want = 0; kind = null; for (const [k, n] of plan) { want += n; if (!kind && count(k) < n) kind = k; } want = Math.min(copCap(), want); }
+        if (L > 0 && units.length < want && kind && !m.heat.hold && Math.hypot(W.last.x - p.x, W.last.z - p.z) < 300) {
           fillT -= dt;
           if (fillT <= 0) {
             const first = units.length === 0, at = findSpawn(first);
-            if (at) { add(at.x, at.z, at.h, at.speed); fillT = COPS.fill[L]; waitT = 0; } else { waitT += 0.25; fillT = 0.25; }
+            if (at) { add(at.x, at.z, at.h, at.speed, kind); fillT = COPS.fill[L]; waitT = 0; } else { waitT += 0.25; fillT = 0.25; }
           }
         } else if (L === 0) fillT = 0;
         // far behind, or the show is over and nobody is looking: off the road
         for (let i = units.length - 1; i >= 0; i--) {
           const u = units[i], d = Math.hypot(u.v.x - p.x, u.v.z - p.z);
-          if (d > COPS.gone || (L === 0 && !u.deputy.out && (d > 200 || (time - u.leftAt > 8 && !onCamera(u.v.x, u.v.z))))) remove(u);
+          if ((d > COPS.gone && !u.post) || (L === 0 && !u.deputy.out && (d > 200 || (time - u.leftAt > 8 && !onCamera(u.v.x, u.v.z))))) remove(u);
           else if (L === 0 && u.leftAt === undefined) u.leftAt = time; else if (L > 0) u.leftAt = undefined;
         }
         sightT -= dt;

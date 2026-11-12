@@ -93,7 +93,7 @@ export function step(v, inp, env) {
   let cmd = inp.steer;
   if (inp.touch && v.slip > 0.15) cmd = 0.7 * cmd + 0.3 * clamp(v.slipSigned / lock, -1, 1);
   v.steer += (cmd - v.steer) * Math.min(1, (inp.touch ? 5 : p.steerRate) * DT);
-  const tanD = Math.tan(v.steer * lock);
+  const tanD = Math.tan(v.steer * lock + (v.tyres ? v.tyres.pull * 0.05 * k : 0));     // a burst tyre pulls to its side
 
   // 2 engine, brakes, drag
   if (!p.oneGear) updateGear(v, env.emit);
@@ -118,10 +118,13 @@ export function step(v, inp, env) {
 
   // 3 grip per axle: decay rate g, cap c; t is weight transfer
   const t = clamp(acc / 24, -1, 1);
-  const gF = 6.5 * mu;
-  let gR = 6.5 * mu;
-  const cF = p.capF * mu * (1 - 0.15 * t);
-  let cR = p.capR * mu * (1 + 0.15 * t);
+  // burst tyres (v.tyres = { f, r, pull, n }: the grip left on each axle, 1 when whole): less grip there and a drag
+  const ty = v.tyres, tF = ty ? ty.f : 1, tR = ty ? ty.r : 1;
+  if (ty && ty.n) v.vf -= v.vf * 0.12 * ty.n * DT;
+  const gF = 6.5 * mu * tF;
+  let gR = 6.5 * mu * tR;
+  const cF = p.capF * mu * tF * (1 - 0.15 * t);
+  let cR = p.capR * mu * tR * (1 + 0.15 * t);
   if (inp.handbrake) { gR = 1.2 * mu; cR = 5 * mu; }
   // power keeps the tail out once it has let go (and until it has nearly come back)
   const out = Math.abs(v.sR);
