@@ -148,7 +148,7 @@ export function createTraffic({ map, nav, collide, chunks, signals, events, stat
     if (c.restT < 3) return;
     c.vf = c.vl = c.w = 0;
     drop(loose, c);
-    if (!c.wasParked && rejoin(c, nav, rnd)) { c.kind = 'traffic'; cars.push(c); return; }
+    if (!c.wasParked && !c.noDriver && !(c.health <= 40) && rejoin(c, nav, rnd)) { c.kind = 'traffic'; cars.push(c); return; }      // a car at 40 health or less is abandoned
     c.kind = 'wreck'; c.parked = true; c.braking = false; c.leftT = 0; wrecks.push(c);       // left where it stopped
   }
   // one pair: a (the player or a loose car) against b
@@ -177,6 +177,15 @@ export function createTraffic({ map, nav, collide, chunks, signals, events, stat
       Object.assign(v, { x, z, h, y: map.heightAt(x, z), parked: true, kind: 'wreck', leftT: -1e9, placed: true });
       wrecks.push(v); collide.bodies.add(v);
       return v;
+    },
+    // the damage module's two handles: a driver who stops driving (the car brakes to rest by itself),
+    // and a car that is finished where it stands (it blocks the road until it is out of view for 60 s)
+    loosen(c) { if (all.includes(c) || cars.includes(c)) knock(c); },
+    wreck(c) {
+      if (c.slot) { c.slot.gone = true; c.slot.car = null; drop(parked, c); c.slot = null; }
+      drop(cars, c); drop(loose, c); drop(wrecks, c);
+      c.vf = c.vl = c.w = 0; c.kind = 'wreck'; c.parked = true; c.braking = false; c.ai = null; c.blink = 0; c.leftT = 0; c.placed = false;
+      wrecks.push(c);
     },
     despawn(v) { if (traffic.onTake && v.kind === 'traffic' && v.ai) traffic.onTake(v); remove(v); },
     near(x, z, r, out = []) { out.length = 0; for (const v of all) if ((v.x - x) * (v.x - x) + (v.z - z) * (v.z - z) <= r * r) out.push(v); return out; },

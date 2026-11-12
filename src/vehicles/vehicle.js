@@ -87,7 +87,7 @@ export function createCar(scene, world, props, events, paint = 0xff4f6e, accent 
   dress(model);
   let preset = car.preset;
   Object.assign(car, { group, speed: 0, kmh: 0, scrape: null, smoking: false, skidding: 0, paint, accent, isPlayer: true,
-    lift: 0, vy: 0, hops: 0, thrown: 0, special: false, blink: 0, empty: false });
+    lift: 0, vy: 0, hops: 0, thrown: 0, special: false, blink: 0, empty: false, dead: false, body });
   let spin = 0, roll = 0, pitch = 0, acc = 0, scrapeT = 0, hopCool = 0, wasSpecial = false, hopRoll = 0, hopPitch = 0, slipT = 0, pvx = 0, pvz = 0;
   let R = 1.05, offs = [1.2, -1.2];
   const fall = { x: 0, z: 0, vx: 0, vz: 0, h: 0 };
@@ -193,7 +193,7 @@ export function createCar(scene, world, props, events, paint = 0xff4f6e, accent 
     const special = !!(car.special || inp.special), fx0 = Math.sin(car.h), fz0 = Math.cos(car.h);
     // a hit from another car since the last step shows up as a jump in speed
     const hitDv = Math.hypot(fx0 * car.vf + fz0 * car.vl - pvx, fz0 * car.vf - fx0 * car.vl - pvz);
-    car.drive(car.thrown > 0 ? STUNNED : inp, env);
+    car.drive(car.thrown > 0 || car.dead ? STUNNED : inp, env);         // a destroyed car only rolls to a stop
     scrapeT -= DT;
     // the hop (the Flounder): a tap of `special` throws the car 0.49 m up; 0.6 s before the next
     hopCool -= DT;
