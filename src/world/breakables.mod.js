@@ -84,6 +84,7 @@ export default {
       ev.emit('prop:broken', { kind: 'palm', x, z, speed: e.speed });
     });
     ev.on('game:reset', () => { geysers.length = 0; });
+    ev.on('chunk:loaded', (e) => { if (e && e.lod === 0) scanT = 0; });          // furniture arrives with its chunk, not half a second later
     ev.on('quality:changed', clear);
 
     api = {
