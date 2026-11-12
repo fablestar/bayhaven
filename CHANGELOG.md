@@ -27,6 +27,32 @@ Built from the notes in `changelog/` by `tools/changelog.mjs`. Newest day first.
 - "Parked with the engine off", bridges and garages do not hide you. I first made standing still for 2 s count; it halved every escape time, so it came out.
 - Fixed cameras, `threat`, `punch`, `killcop`, `explosion`, `shoot-out`: no weapons or health yet to fire them.
 
+### D5-S2 · Heat 4 and 5
+
+**Shipped**
+
+1. **The news helicopter.** `src/vehicles/chopper.mod.js`. BHTV 6's Mayfly, built from boxes off the bible's sheet (white pod, violet boom, a 6 on each side, a spotlight and a camera ball under the nose), with a two-blade rotor at 6 turns a second. From heat 3 it is made 380 m away and is on the scene in 4.8 s, then holds 60 m up and 45 m out, behind and to the left, and circles when you stop. The rotor is looped noise chopped at 12 Hz through a 900 Hz low-pass, louder as it gets nearer. Its spotlight is a 14 m disc on the road with a faint cone down to it, bright at night and barely there by day, trailing you by 0.4 s. While the disc is on you it is a camera: you count as seen with no deputy near.
+2. **The helicopter cam.** V (or a pad's Back button, or the on-screen `Chopper cam` button, which is the way in on a phone) moves the view to the helicopter: 59 m up, 35 degrees wide, looking at you, with a red `CHOPPER CAM` tag on the HUD canvas. V again, the heat clearing, the helicopter leaving, or 2 s under cover gives the chase camera back.
+3. **Heat 4.** `src/actors/cops-heavy.mod.js`, `cops-heavy-draw.js`, `cops-roadblock.js`. Sheriff Grouper SUVs (they shove with one and a half times their mass) and tactical vans join the cruisers: 2, 2 and 2 on `low`, 4, 3 and 2 on `high`, always inside the cap. **Roadblocks**: every 2 s your road is followed straight on, and the first junction 160 to 400 m ahead on an avenue or boulevard gets two units nose to nose at 30 degrees with a 3.2 m gap at the kerb on your side, barriers to the far kerb, deputies out and firing, and a **spike strip** 25 m in front. A tyre crossing it above 10 km/h bursts: that corner keeps 0.3 of its grip, the car pulls to that side, each burst tyre drags, and the rim throws sparks. One roadblock at a time (two at heat 5 off `low`); it lifts when you are past, after 40 s, or when you turn away for 6 s.
+4. **Heat 5, Hurricane Dale.** Sheriff Rucker's show truck: a stage on a truck with a screen each side, a camera crane, a dish, two speakers and the Sheriff at his podium with a megaphone. It never rams: it pulls alongside to film, its cameras see 80 m all round, and its horn is the show's four notes (D4 F4 A4 D5). With it come cruisers, SUVs and vans up to the cap: 6 on `low` in 11 s, 12 on `high` in 24 s.
+5. **For the radio and the overlay.** `heat:broadcast { on, level }` goes out when the level crosses 4 either way. 20 more chat rows and 10 more ticker lines, word for word from the bible (`src/content/heat-high.js`): the heat 4 and heat 5 groups, two for the helicopter cam, and the Sheriff's lines for stepping up and for 50,000, 150,000, 250,000 and 500,000 viewers.
+6. **The day's drop: "Bayhaven Blue: Pilot Episode".** `src/content/drops/day-5.js`, build day 5 only. A red button on a plinth in the plaza of the day 1 block. Walk or drive into it and heat goes straight to 5. The sign beside it and the HUD's drop line show viewers while you are on air and your peak afterwards.
+7. **Both finish-early items.** A second helicopter at heat 4 (Sheriff's colours, 40 m up, ahead of you; not on `low`). Roadblock deputies dive aside when a car comes at them inside 15 m.
+8. Two art requests: `art/requests/veh-news-mayfly.json`, `veh-sheriff-showtruck.json`.
+
+**Not shipped**
+
+- **The van and the truck are bodywork over other vehicles.** There is no `tactical` or Hogfish model yet, so the van is drawn over a Pompano and the truck over a Mullet: their own wheels, wheelbase and engines show through. Size, mass and top speed are the bible's.
+- **The truck's screens do not show the live count.** They are dark panels with a red pill and white blocks. A canvas there would be one more texture on a phone.
+- **How the helicopter loses you is my rule.** The bible has it see everything within 150 m that is not under cover, and names bridges, garages and a tunnel as cover. None of those is on the map, so heat 3 and up would have had no way out but a car wash. What I built: it is a witness only while its disc is on you (above about 70 km/h in a straight line you are ahead of the disc); it keeps station on a car within 150 m, but one that stays out of the light for 12 s with no deputy watching is lost, and it goes to sweep the last place it had you. This wants replacing when cover exists.
+- **The spike strip is wider than the bible's 7 m.** It runs from the far kerb to the gap (26.8 m on Coral Boulevard), because two vehicles and a row of barriers cannot close a 22 or 30 m road and a 7 m strip was easy to miss.
+- **A roadblock can go up in the camera's view** if it is more than 220 m ahead. On a straight avenue the second junction is always in view, so the bible's rule as written would never fire there.
+- **Burst tyres mend** when the heat clears, when you change car, on a reset and when booked. There is no garage to fix them yet.
+- **The helicopter cannot be shot down**, the second one has no speaker or marksman, and tactical deputies look like ordinary deputies and are `smg` in name only (their shots still hurt nobody, as in D5-S1).
+- **The radio does not cut to the chase.** The event is there; the audio lane has to take it.
+- Chat row 34 and the helicopter rows 163 to 170 are not in: the prompt asked for 20.
+- Heavy units do not shove traffic aside, and the expressway roadblock (three vehicles, 600 m ahead) is not built: there is no expressway.
+
 ## Day 4: Downtown (day 4 headline)
 
 ### D4-S1 · Downtown (day 4 headline)

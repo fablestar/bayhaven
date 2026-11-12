@@ -89,7 +89,6 @@ export default [
         const px = hud.getContext('2d').getImageData(Math.round((window.innerWidth / 2 - 40) * dpr), Math.round(80 * dpr), 1, 1).data;
         return { c, y: cam.position.y, fov: cam.fov, aim: (fwd.x * to.x + fwd.y * to.y + fwd.z * to.z) / l, tagPixel: [...px], active: g.modules.chopper.active, chat: g.modules.live.rows.map((q) => q.user + ': ' + q.text) };
       });
-      await t.shot('D5-S2-chopper-cam');
       await page.keyboard.press('KeyV');
       await settle(page, 600);
       const off = await page.evaluate(() => { const g = window.__game; return { c: g.test.chopper(), y: g.camera.position.y, fov: g.camera.fov, events: g.camEvents, errors: g.test.errors() }; });
@@ -284,7 +283,6 @@ export default [
         const s = T.stats(), list = T.cops.list();
         return { ...s, h: T.heavy(), chopper: T.chopper(), near: list.filter((u) => u.d < 120).length, heat: T.heat().level, copCalls: T.cops.stats().calls, errors: T.errors() };
       });
-      if (t.quality === 'low') await t.shot('D5-S2-heat5');
       t.expect(r.heat, '==', 5, 'heat while measuring');
       t.expect(r.cops, '==', cap, 'police vehicles (the cap)');
       t.expect(r.calls, '<=', TABLE.maxCalls[i], 'draw calls');

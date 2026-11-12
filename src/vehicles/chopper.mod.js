@@ -55,7 +55,7 @@ export default {
     const list = [], stats = { arrived: 0, left: 0, camOn: 0, coverOffs: 0, seenSteps: 0, soundOn: false, gain: 0 };
     const disc = { x: 0, z: 0, y: 0, on: false, opacity: 0, r: CHOPPER.disc / 2 };
     const spot = { x: 0, z: 0 };                     // where the helicopters think the player is
-    let tracking = false, darkT = 0;
+    let tracking = false, darkT = 0, jumpT = 0, px = 0, pz = 0;
     let time = 0, camOn = false, coverT = 0, hinted = false, lastPad = false, tagRect = null, tagDrawn = false;
 
     // the spotlight: a disc on the ground and a faint cone down to it
@@ -186,8 +186,11 @@ export default {
         darkT = lead && lead.sees ? 0 : darkT + dt;
         const byDeputy = L > 0 && (S.heat.seen || S.heat.unseenT < CHOPPER.lost), wasTracking = tracking;
         const byAir = !!lead && wasTracking && lead.d < CHOPPER.reach && darkT < CHOPPER.shake && !(heat.hidden && heat.hidden());
-        tracking = L > 0 && (byDeputy || byAir);
-        if (tracking) { spot.x = p.x; spot.z = p.z; } else if (!wasTracking && L > 0 && !list.length) { spot.x = S.heat.last.x; spot.z = S.heat.last.z; }
+        // a player who is suddenly somewhere else (booked, a hospital, a mission's cut) is not followed there
+        if (Math.hypot(p.x - px, p.z - pz) > 60) jumpT = 0.6;
+        px = p.x; pz = p.z; jumpT -= dt;
+        tracking = L > 0 && jumpT <= 0 && (byDeputy || byAir);
+        if (tracking && (S.heat.seen || byAir)) { spot.x = p.x; spot.z = p.z; } else if (!wasTracking && L > 0 && !list.length) { spot.x = S.heat.last.x; spot.z = S.heat.last.z; }
         if (L === 0) { tracking = false; darkT = 0; }
         for (const h of list.slice()) fly(h, dt);
         // the disc: trails the player by 0.4 s while the helicopter knows where they are; sweeps while it searches
