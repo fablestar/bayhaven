@@ -29,3 +29,15 @@ Events heat emits: `crime { kind, case, seen, points, x, z, weapon, level }` (`l
 Events heat listens to: `vehicle:crash`, `ped:hit`, `prop:broken`, `weapon:fired`, `vehicle:entered`, `player:spawned`, `jump:landed`, `crime` (another lane's, without `points`), `game:reset`, `game:ready`.
 
 Stand-ins and gaps: Booked puts the player at the kerb of the road nearest the Sheriff's HQ place `(200, -2150)` pulled inside today's map (about `(200, -1406)`), on foot, two hours on. Weapons are not taken (there are none). `state.economy.cash` has no owner yet, so `book()` writes it and emits `cash:changed`. Heat 4 and 5 run in the meter but bring no new units, roadblocks or helicopter (D5-S2). "Parked with the engine off", bridges and garages do not hide yet. Since D5-S2 `heat:broadcast` and `heat:roadblock` are emitted by `modules.copsheavy`, heat 4 and 5 bring their units and roadblocks, and `modules.cops.sees` (which heat asks) includes the news helicopter's spotlight: see `actors.md` and `vehicles.md`.
+
+## Health (session D5-S4: `health.mod.js`)
+
+| Name | Signature | Meaning |
+|---|---|---|
+| modules.health | `hurt(dmg, { ranged, weapon, by, x, z, raw }) → taken` · `heal(n)` · `vest(n = 100)` · `knockOut()` · `wake()` · `down` · `hospital() → { x, z, standIn }` · `numbers` · `max { health: 100, vest: 100 }` | Writes `state.player.health` and `.armour`. A weapon in someone's hands does half its table number to the player (`raw: true` skips that); a vest takes 80% of a ranged hit. After 6 s without a hit health creeps to 30 at 2 a second. Save section `health` |
+| Knocked out | health 0 | 5% of cash up to $2,500 is taken at once (`cash:changed`, why `knockedout`), input is held, and after 5 s (or `wake()`, which the wristband screen calls on a press) heat clears and the player stands on foot at the hospital point with 50 health. Weapons are kept. **Stand-in:** Bayhaven General `(-500, -1700)` pulled inside today's map, at the kerb of the nearest road (about `(-500, -1406)`), until Northgate exists |
+| test | `test.health() → { health, armour, down, bill, sinceHit, hospital, max }` · `test.health.set(n)` (0 knocks out) · `.vest(n)` · `.hurt(dmg, opts)` · `.wake()` | |
+
+Emits `player:hurt { dmg, health, armour, by, weapon, x, z }`, `player:knockedout { bill, cash, lead, x, z, seconds }`, `player:woke { x, z, health, standIn }`, `cash:changed`. Listens: `combat:hit` with `target: 'player'` and no `applied` (a deputy's round: 9 on foot; in a car it goes to `modules.damage.hurt` on the car), `vehicle:blast` (on foot within the radius: `120 × (1 - d / r)`), `game:reset`.
+
+Not built: damage from a vehicle hitting the player on foot, falls, food. `heat.mod.js` now ignores `weapon:fired` with `melee: true`.

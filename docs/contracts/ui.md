@@ -58,3 +58,15 @@ For other lanes:
 Listens: `heat:changed`, `heat:live`, `heat:cleared`, `heat:dropped`, `drift:end`, `jump:landed`, `vehicle:crash`, `prop:broken`, `ped:hit`, `vehicle:destroyed`, `vehicle:entered`, `cop:fired`, `crime`, `player:knockedout`, `player:booked`, `game:reset`, `hud:layout`, `view:resize`. Emits nothing.
 
 Not done here: the siren lights do not dim with the meter at heat 1 and 2, and the LIVE pill has no unseen look or `OFF AIR` (both are pieces in `hud-draw.js`, outside this session's files). Tapping the pill does nothing (the helicopter cam is D5-S2).
+
+## The fight's page elements (session D5-S4: `weapons.mod.js`)
+
+| Name | Signature | Meaning |
+|---|---|---|
+| modules.weapons | `bar` · `vitals` · `knockedOut { open, data, show(data), hide(), dismiss() }` · `layout() → [{ id, x, y, w, h }]` | Page elements, on foot only, hidden in clips, menus and while knocked out. `#combat-ui`: the three-slot quick bar (above the radio pill on a desktop, under the clock on a phone; a slot is 84 x 44 px, 72 x 64 on touch) with the health and armour bars over it, shown only when not full. `#combat-touch`: `Fire` (hold) and `Lock` (a toggle), 72 px. `#hurt-flash`: a pink edge for half a second on `player:hurt`. This module sets `input.actions.aim` and `.fire` when no script is running |
+| keys | | Right mouse or L holds the lock, left mouse or Ctrl fires, 1 2 3 pick a slot (not with `?debug`, which uses the digits), G is the next target. Pad: left trigger, right trigger, d-pad left and right |
+| Knocked out | `#knockedout` and one 1200 x 120 canvas | On `player:knockedout`: `#game` gets the class `ko` (12 degrees, grey, over 600 ms; no tilt with reduce motion), the wristband slides in from the left at 900 ms with the name, a bar code and the bill. A press, Enter or Space after 1.4 s sends it out and calls `modules.health.wake()`; `player:woke` fades from white |
+| settings | `state.settings.blood` (true) | A `Blood` switch on the settings page (`menus.mod.js`); off: grey dust, no patch |
+| test | `test.weaponsUi() → { shown, slots, vitals, knockedOut, layout, held, aim, fire }` | |
+
+For core: on foot the pad's triggers still walk (input.js adds gas and brake to `moveY`); they should not once aim and fire are theirs. `aim` and `fire` are not wired in `input.js`; this module does it.
