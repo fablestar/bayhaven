@@ -65,6 +65,37 @@ Built from the notes in `changelog/` by `tools/changelog.mjs`. Newest day first.
 - **The app's "back" is instant,** not the kit's 180 ms shrink.
 - **No art requests** were made.
 
+### D6-S3 · Expressway, Northgate and Mallard Greens
+
+**Shipped**
+
+- **Deck levels** (`src/world/decks.js`). Level 0 is the ground, level 1 is a deck. `map.heightAt(x, z, level)` and the collision hash both filter by level; a body changes level only on a ramp (`map.decks.step`): up from a ramp's foot, down at the foot or over the edge. `world.mod.js` keeps the player's level in `state.player.level` and fills the car's colliders at that level, so on the deck you hit its barriers and under it you hit its pillars.
+- **The Bayline Expressway**, z = -1480 from x = -3000 to 3000: 26 m wide, 8 m up, three lanes each way, a median barrier, edge barriers, lane paint, a pair of columns every 40 m, green exit gantries. **Six ramps at the four canon places** (x = -2400 north; -900 north and south; 700 north and south; 2200 south): 10 m slip roads beside the deck, 100 m long. Ground roads pass under the deck at x = -900 and 700 and tie Palma Vieja and Meridian to the new districts.
+- **Its lanes are in the nav graph at 110 km/h** (264 lanes, level 1), joined to the streets by the ramps. Traffic uses them. The route follower climbs the ramp at x = 700 by itself.
+- **Roads that are not on the grid.** The map and the lane graph take "free paths" (a list of points): the expressway, ramps and every Mallard Greens lane are these. The GPS and the map screen draw them with no change (the map screen already edged `expressway` in mango).
+- **Northgate**: the zone (plan bounds, Route 44 on its east edge), nine north to south roads and eight east to west with the bible's names and gaps, six-lane Gateway Boulevard with lights at the four avenues, five neighbourhoods. 112 lots of the four tier A recipes: **strip malls** behind car parks (always at least 2.06 times the building), **big-box stores**, **drive-throughs** with a sign crown and a painted lane, **motels** in a U round a pool. A **pole sign** 12 to 22 m at every lot (a strip mall is 6.7 m). Parked cars in the bays are decoration. **Billboard Row**: all 40 boards with a lawyer's face, firm and number (16 Larry, 12 Annie, 4 each for Gull, Limpet and Jellyfish).
+- **Landmarks**: **Bayhaven General** (podium, mint tower, glowing pink cross, helipad with an H and eight amber lights, canopy over the emergency doors, three ambulances), the **Sheriff's HQ** (office with the teal band and pink stripe, studio, a dish of radius 7 on a pedestal, the 45 m mast with three red lights, "On air" box, holding block, fenced motor pool with eight cruisers and a cage of seized cars), **Galleria Flamingo** (the mall, four portals, roof lantern, loading dock, car parks, and the flamingo: top at 36 m, glowing).
+- **Mallard Greens**: the zone from splines. 18 named lanes through the bible's control points (Catmull-Rom, cut into pieces of about 35 m), Clubhouse Circle as a one-way ring, Coot Circle, eleven dead ends with turning bulbs, Gander Road outside the south wall. **413 houses** (The Mallard, The Drake, The Teal) in the four approved colours, cycling so no two neighbours match, each with a hip roof, garage door, driveway, porch light, mailbox and one tree. Lawn in `#3fb86a`. The **golf course** (18 fairways, greens and flags; the card adds up to 71), **Lake Serenity** with its 12 m jet and six small ones, three ponds on the 7th, the **wall, hedge and fence** with their three openings (Starling Approach, the south gate, the 1.8 m hole in the hedge), the **Gatehouse** (hut, canopy, two raised arms, sign wall with a box duck).
+- **Landmarks**: the **clubhouse** (hall, hip roof, portico, terrace, pro-shop wing, clock tower 25 m) and the **model home** (a blush Drake on a brighter lawn, six flags, a "Bayhaven Tomorrow" banner).
+- **The clubhouse clock is always right**: `clubclock.mod.js` sets its eight hands from the game clock each game minute (one draw call).
+- **The hospital and Sheriff's HQ positions are exported** (`docs/contracts/world.md`): `map.landmark('hospital')`, `map.landmark('sheriff-hq')`, `map.places('hospital')[0]` at (-500, -1700) and `map.places('booking')[0]` at (200, -2146). Both are outdoors and clear of walls. Nobody's stand-in was edited: those are in other lanes.
+- **Finished early list**: the **Starlite screen** (screen on six legs, sunburst, snack hut, ticket booth, row lines; no tilted terraces, no film) and **sprinklers** (one on every lawn, all on at 06:00, 18:00 and 15:15 for ten game minutes, one extra draw call a chunk while they run).
+
+**Not shipped**
+
+- **Only the player carries a level.** Vehicles, traffic, deputies and people call `heightAt` with no level and get a guess: the deck, unless a ground road passes under it there. So a traffic car on the deck dips to the ground for a moment over Route 44 and Calle Orquídea, and nothing but the player's car is stopped by the deck's barriers. Each lane needs to keep `level` on its bodies (contract has the two calls).
+- **On foot the player is not held by deck barriers** (the walking code asks the hash with no level, which now means the ground).
+- **Ramps are two-way slip roads, one a side**, not separate on and off ramps; the median is open for 40 m where each joins.
+- **No ramp to the south at x = -2400 or to the north at x = 2200** (no road there to meet). The expressway ends at a barrier at x = ±3000.
+- **Northgate tier B and C are not built**: clinics, offices, car lots, ranch houses (their lots are strip malls), Wahoo World, the lawyers' offices, the Sinkhole, Mount Seagull, the Motel Circle roundabout and sign, Checkout Lane, Closeout Circle, bus shelters, lawyers' benches. Light masts are the ordinary street lamp.
+- **Shops are places on the map only** (eight seeds); the buildings at those seeds are whatever the block drew.
+- **"On air" does not light at heat 3**, and nothing at the hospital or HQ listens for `player:knockedout` or `player:booked` (those belong to other lanes; the points are exported).
+- **Mallard Greens**: no Dodo Drive, Loon Lane, Buzzard Bend or Easement Track (tier C and B), so the bible's check 4 (a Birdie through the hedge to the track) cannot run. No Canvasback houses, no cars on driveways, no Birdies, no Bylaw, no sales centre, notice board, pool or cart barn. The lake is flat water you can drive across; it is not swimmable. The Gatehouse arms are up and nobody is in the hut. The clubhouse has no car park.
+- **The Teal is 22 m wide, not 24**, and lots are 24 m of frontage, not 22, so two fit side by side on a curve.
+- **The model home stands 19 m east of its seed**: the bible's (-1100, -2300) is on Grackle Lane itself. The landmark keeps the bible's seed.
+- **People in Mallard Greens** walk the verges of lanes but have no crossings. shopper, mascot, medic, dealer, golfer and guard are tier B: tourists and retirees stand in.
+- **No art requests** were made.
+
 ## Day 5: Heat
 
 ### D5-S1 · Heat
