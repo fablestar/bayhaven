@@ -15,7 +15,8 @@ export const CONTROLS = [
   ['Look back', 'Hold B', 'Look back'],
   ['Camera', 'C', 'Camera'],
   ['Skip time', 'T', ''],
-  ['Mute', 'M', ''],
+  ['Map', 'M', 'Pause, then Map'],
+  ['Mute', '0', ''],
   ['Back to the start', 'R', ''],
   ['Pause', 'Esc', 'The pause button'],
 ];

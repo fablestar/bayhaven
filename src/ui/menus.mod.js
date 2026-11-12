@@ -107,6 +107,7 @@ export default {
 
     menus.register({ id: 'pause', title: 'Paused', build(page) {
       kit.row(page, 'Resume', () => menus.close());
+      if (pages.map) kit.row(page, 'Map', () => menus.open('map'));
       kit.row(page, 'Settings', () => menus.open('settings'));
       kit.row(page, 'Controls', () => menus.open('controls'));
       const save = kit.row(page, 'Save', () => { const ok = ctx.save.write('auto'); save.textContent = ok ? 'Saved' : 'Could not save'; });

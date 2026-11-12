@@ -15,8 +15,8 @@ const HOLD = {
   ArrowUp: 'gas', KeyW: 'gas', ArrowDown: 'brake', KeyS: 'brake',
   Space: 'handbrake', KeyH: 'horn', KeyB: 'back', ShiftLeft: 'sprint', ShiftRight: 'sprint',
 };
-// C camera, T skip time, R reset, M mute (day 2). F, E and Q are named in plan/04 section 19.
-const PRESS = { KeyC: 'camera', KeyT: 'skipTime', KeyR: 'reset', KeyM: 'mute', KeyF: 'interact', KeyE: 'radioNext', KeyQ: 'radioPrev' };
+// C camera, T skip time, R reset. M opens the map (ui/mapscreen.mod.js) and 0 mutes (audio/engine.mod.js) since day 4. F, E and Q are named in plan/04 section 19.
+const PRESS = { KeyC: 'camera', KeyT: 'skipTime', KeyR: 'reset', KeyF: 'interact', KeyE: 'radioNext', KeyQ: 'radioPrev' };
 // pad buttons that act like a press: right stick click, Y, Back, Start
 const PAD_PRESS = { 11: 'camera', 3: 'skipTime', 8: 'reset', 9: 'mute' };
 const dead = (v) => (Math.abs(v) < 0.15 ? 0 : (v - Math.sign(v) * 0.15) / 0.85);
