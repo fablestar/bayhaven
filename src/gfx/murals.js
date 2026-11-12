@@ -1,5 +1,5 @@
 // The mural painter (plan/bible/art/kits.md section 7). One canvas holds the painted walls of the
-// city: 48 square mural cells in six rows of eight, and under them 16 hand-painted or stencilled
+// city: 48 square mural cells in six rows of eight, and under them 16 hand-painted
 // sign boards. mural(seed, palette) paints a cell the first time it is asked for and hands back its
 // UVs; when the sheet is full the cell that was asked for longest ago is painted over. The same
 // seed and palette always give the same picture. Murals are drawn unlit and dim a little at night.
@@ -122,31 +122,24 @@ export function paintCell(g, x0, y0, S, seed, pal, drips) {
   return LAYOUTS[layout];
 }
 
-// A sign board. 'paint': hand-painted letters on cream, each a little crooked, over two brush
-// stripes. 'stencil': ink letters between two hazard bands.
-function paintBoard(g, x0, y0, w, h, text, colour, style, seed) {
+// A hand-painted sign board: letters on cream, each a little crooked, with an ink shadow, over two brush stripes.
+function paintBoard(g, x0, y0, w, h, text, colour, seed) {
   const k = w / 512, r = rng(seed);
   g.save(); g.beginPath(); g.rect(x0, y0, w, h); g.clip(); g.translate(x0, y0);
-  g.fillStyle = style === 'stencil' ? colour : '#fff1c9'; g.fillRect(0, 0, w, h);
+  g.fillStyle = '#fff1c9'; g.fillRect(0, 0, w, h);
   g.textAlign = 'left'; g.textBaseline = 'middle';
   let size = 76 * k;
   const font = () => { g.font = `900 ${size}px "Trebuchet MS", "Arial Black", sans-serif`; };
-  const gap = style === 'stencil' ? 6 * k : 0, width = () => { let t = 0; for (const ch of text) t += g.measureText(ch).width + gap; return t; };
-  font(); while (width() > 440 * k && size > 18 * k) { size -= 4 * k; font(); }
-  if (style === 'stencil') {
-    for (const y of [0, h - 10 * k]) for (let x = -h; x < w; x += 24 * k) { g.fillStyle = INK; g.beginPath(); g.moveTo(x, y + 10 * k); g.lineTo(x + 12 * k, y + 10 * k); g.lineTo(x + 22 * k, y); g.lineTo(x + 10 * k, y); g.fill(); }
-  } else {
-    g.globalAlpha = 0.45; g.fillStyle = colour;
-    for (const y of [0.74, 0.86]) { g.beginPath(); g.moveTo(40 * k, y * h); g.quadraticCurveTo(w / 2, (y + 0.04) * h, w - 40 * k, (y - 0.02) * h); g.lineTo(w - 44 * k, (y + 0.05) * h); g.quadraticCurveTo(w / 2, (y + 0.1) * h, 36 * k, (y + 0.06) * h); g.fill(); }
-    g.globalAlpha = 1;
-  }
-  let x = (w - width()) / 2;
+  font(); while (g.measureText(text).width > 440 * k && size > 18 * k) { size -= 4 * k; font(); }
+  g.globalAlpha = 0.45; g.fillStyle = colour;
+  for (const y of [0.74, 0.86]) { g.beginPath(); g.moveTo(40 * k, y * h); g.quadraticCurveTo(w / 2, (y + 0.04) * h, w - 40 * k, (y - 0.02) * h); g.lineTo(w - 44 * k, (y + 0.05) * h); g.quadraticCurveTo(w / 2, (y + 0.1) * h, 36 * k, (y + 0.06) * h); g.fill(); }
+  g.globalAlpha = 1;
+  let x = (w - g.measureText(text).width) / 2;
   for (const ch of text) {
-    const cw = g.measureText(ch).width, tilt = style === 'stencil' ? 0 : (r() - 0.5) * 0.105, up = style === 'stencil' ? 0 : (r() - 0.5) * 6 * k;
-    g.save(); g.translate(x + cw / 2, h * (style === 'stencil' ? 0.52 : 0.46) + up); g.rotate(tilt);
-    if (style !== 'stencil') { g.fillStyle = INK; g.fillText(ch, -cw / 2 + 4 * k, 4 * k); }
-    g.fillStyle = style === 'stencil' ? INK : colour; g.fillText(ch, -cw / 2, 0);
-    g.restore(); x += cw + gap;
+    const cw = g.measureText(ch).width;
+    g.save(); g.translate(x + cw / 2, h * 0.46 + (r() - 0.5) * 6 * k); g.rotate((r() - 0.5) * 0.105);
+    g.fillStyle = INK; g.fillText(ch, -cw / 2 + 4 * k, 4 * k); g.fillStyle = colour; g.fillText(ch, -cw / 2, 0);
+    g.restore(); x += cw;
   }
   g.restore();
 }
@@ -185,11 +178,11 @@ export function mural(seed, palette, { drips = false } = {}) {
   if (e.fresh) { e.fresh = false; e.layout = paintCell(ctx, x, y, S, seed, palette, drips); stats.painted++; stats.layouts[e.layout] = (stats.layouts[e.layout] || 0) + 1; tex.needsUpdate = true; }
   return uvOf(x, y, S, S, 1.5);
 }
-// UVs of a sign board, 4 to 1: style 'paint' or 'stencil'
-export function board(text, colour = '#ff6f91', style = 'paint') {
+// UVs of a hand-painted sign board, 4 to 1
+export function board(text, colour = '#ff6f91') {
   if (!canvas) muralAtlas();
-  const w = canvas.width / 4, h = w / 4, e = slotFor(boards, style + '|' + colour + '|' + text, BOARDS), x = (e.slot % 4) * w, y = ROWS * (canvas.width / COLS) + Math.floor(e.slot / 4) * h;
-  if (e.fresh) { e.fresh = false; let s = 0; for (const ch of text) s = (s * 31 + ch.charCodeAt(0)) | 0; paintBoard(ctx, x, y, w, h, text, colour, style, s); stats.boardsPainted++; tex.needsUpdate = true; }
+  const w = canvas.width / 4, h = w / 4, e = slotFor(boards, colour + '|' + text, BOARDS), x = (e.slot % 4) * w, y = ROWS * (canvas.width / COLS) + Math.floor(e.slot / 4) * h;
+  if (e.fresh) { e.fresh = false; let s = 0; for (const ch of text) s = (s * 31 + ch.charCodeAt(0)) | 0; paintBoard(ctx, x, y, w, h, text, colour, s); stats.boardsPainted++; tex.needsUpdate = true; }
   return uvOf(x, y, w, h, 1);
 }
 // A painted wall from a to b (left to right as you face it; each is [x, z]) between y0 and y1:

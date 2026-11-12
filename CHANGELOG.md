@@ -50,6 +50,30 @@ Also: Bayfront Park is a lawn with palms (its landmark is tier B), kept clear of
 - Tier B: segments, songs 4 to 6, lines 7 to 20, doorway radios, shops playing stations, the plate rattle, the phone's low-pass, the browser-speech setting. `audio.sfx` and `loop` are still to come.
 - No art requests were made.
 
+### D4-S3 · Port, Palma Vieja and Paintworks
+
+**Shipped**
+
+1. **The mural painter.** `src/gfx/murals.js`: `mural(seed, palette)` paints a square cell on one canvas sheet and hands back its UVs. Twelve shapes (disc, half disc, wave, bird, fish, hand, frond, eye, flamingo, dots, zigzag, and slanted bands), five layouts (hero, parade, collage, horizon, split), an outline in ink or white, speckle, a three-shape tag, and paint drips for The Paintworks. The same seed and palette always give the same picture. The sheet also holds 16 hand-painted sign boards (`board(text, colour)`): crooked letters with an ink shadow over two brush stripes. Murals and boards are one unlit mesh a chunk and dim to half at night.
+2. **Palma Vieja.** Zone and generator. 1,500 and more shop-house lots in mango, turquoise, rose and lime, two or three floors, no two neighbours the same colour; each block is cut by an alley into two rows. A house has a tiled strip along its roof edge, a striped awning, folding doors, shuttered windows, a balcony rail, two chairs, and on seven in ten a hand-painted board. Some corner houses carry a mural on their bare side wall. Strings of twelve bulbs hang across the streets: six strings to 100 m in La Plaza and Calle Mural, two in Los Patios, one in El Bajo. All 15 north-south and 14 east-west roads carry the bible's names and join downtown's and the beachfront's streets with no barrier.
+3. **Domino Park and the bell tower.** The park: paving, a low wall with four gates, twelve shade trees with bulbs between them, a tin pergola over eight tables with stools and a lamp each, Rafa's table under the largest tree with a rose parasol, the chalk board. Calle Mamey is closed across it. The church: a white nave under a tiled roof and a 34 m tower with three mango bands, an open top round a yellow bell, a tiled cap, warm light inside at night.
+4. **Rustwater.** Zone and generator. Container stacks one to five high in exactly six colours, drawn as instances (one draw call a chunk), in the two container yards and on kit blocks; transit sheds with a yellow and black hazard band and four dock doors; the port railway along z = -277 with six sidings and flat wagons in the rail yard; 18 m sodium masts with four heads in `#ff9a3c` and no ordinary street lamps anywhere in the district. The quay is land to x = 3024 and z = 130 and water past it (`map.isLand`, `heightAt`, `depthAt`, `surfaceAt`), with a low solid edge and bollards.
+5. **The cranes, the ships.** Four gantry cranes at z = -450, -350, -250 and -150: yellow legs, a sill beam at 14 m that Breakwater Road runs under, a 200 m boom at 56 m, an A-frame to 70 m, a red light on top. The container ship Slack Tide lies under them with boxes four high on deck. The cruise terminal: a white hall under a wave canopy with flagpoles and gangways, and the white ship Early Supper with six stepped decks, lifeboats and a pink funnel to 52 m.
+6. **The Paintworks.** Zone and generator. Brick warehouses (two or three 5 m floors, sawtooth or flat roofs, steel windows, a loading door, a steel stair, bins), metal sheds, container bars (bright boxes stacked two and three high, a counter with stools, a neon arrow, bulbs over the court) and rooftop clubs (a truss with eight lamps and eight beams of violet and mint light that swing after dark). Every warehouse, shed and club has at least one wall that is a mural from edge to edge. Wet Paint Alley is closed to cars; Container Row hangs bulbs across its streets.
+7. **The old paint factory.** A brick hall under a six-tooth roof with murals on two walls, and three eight-sided chimneys at z = -885: 62 m tipped pink, 54 m tipped cyan, 46 m tipped mint, each with six drips of paint running down the brick and a glow at the top after dark. Four pigment vats, a loading dock, a ladder to a platform at 40 m.
+8. **Mixes.** Each of the three zone files carries the bible's day band for traffic and people (`traffic`, `peds`); Palma Vieja and The Paintworks also carry the night band (`night`).
+9. **Skyline.** The four cranes, both ships, the terminal hall, the three chimneys with the factory hall, and the bell tower are drawn in the far skyline mesh from the same outline code as up close. The skyline is 8,048 triangles of a 20,000 budget.
+
+**Not shipped**
+
+- **Nothing from the "if you finish early" list:** no scrapyard with a crusher, no Mercado. The scrapyard, the tank farm and the shipyard are flat fenced yards with masts.
+- **Tier B recipes.** Palma Vieja builds only P1, the shop-house (P2 to P6 are shop-houses at their neighbourhood's frontage). The Paintworks builds W1, W2, W4 and W5 (W3, W6, W7 are brick warehouses). Rustwater builds R1 and R2.
+- **Palma Vieja's mural wall and Ventanita Rosa** (both tier A in the bible, neither on this session's list). The coffee window is in `places` only.
+- **The link roads from the beachfront to the port.** The bible leaves the strip x 1600 to 1800 south of z = -320 to no district, so Gunwale Road and Driftwood Street start at Bollard Street and the beachfront's streets still end at barriers at x = 1600. The way to the port is Flamingo Avenue.
+- Fairlead Road, level-crossing arms, the yard engine, moving crane trolleys, bay numbers and every stencilled port sign.
+- **The dawn and golden bands** of the mixes: nothing reads the clock for them yet.
+- No art requests were made.
+
 ## Day 3: On foot (Teo gets out of the car)
 
 ### D3-S1 · On foot (Teo gets out of the car)

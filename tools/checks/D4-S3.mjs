@@ -27,12 +27,13 @@ export default [
     },
   },
   {
-    id: 'D4.6', name: 'Long drive: 90 s from the beach to the port, clean and inside the streaming budget', quality: ['low', 'high'],
+    id: 'D4.6', name: 'Long drive: 90 s from the beach to the port on empty streets, clean and inside the streaming budget', quality: ['low', 'high'],
     async run(t) {
-      const page = await t.open('&quality=' + t.quality + '&seed=1', SMALL), cal = await calibrate(page);
+      // traffic is off: the route follower cannot overtake, and one run in three it sat behind a stopped car for the rest of the drive
+      const page = await t.open('&quality=' + t.quality + '&seed=1&traffic=0', SMALL), cal = await calibrate(page);
       const d = await page.evaluate(async () => {
         const T = window.__game.test, map = window.__game.modules.map;
-        T.teleport(1100, 40.5, Math.PI / 2); await T.wait(0.5); T.resetStats();
+        T.teleport(1100, 40.5, Math.PI / 2); await T.wait(2); T.resetStats();
         const chunkMs = [], chunks = new Set(), districts = new Set();
         const timer = setInterval(() => { const s = T.stats(), p = T.player(), c = map.chunkOf(p.x, p.z); chunkMs.push(s.chunkMs); chunks.add(c.cx + ',' + c.cz); districts.add(map.districtAt(p.x, p.z)); }, 250);
         const done = await T.drive([{ x: 1332, z: 37 }, { x: 1332, z: -357 }, { x: 2900, z: -357 }], { seconds: 90, speed: 24 });
@@ -205,7 +206,7 @@ export default [
         res.shared = shared; res.tallest = Math.max(...kit.map((l) => l.h + (l.recipe === 'W5' ? 5 : l.recipe === 'W1' ? 2.6 : l.recipe === 'W2' ? 2.6 : 1.1)));
         res.alley = g.modules.nav.lanes.filter((l) => Math.abs(l.ax - 1092) < 12 && Math.abs(l.bx - 1092) < 12 && Math.min(l.az, l.bz) < -444 && Math.max(l.az, l.bz) > -666 && Math.abs(l.ax - l.bx) < 1).length;
         res.names = [m.nearestRoad(1492, -900).name, m.nearestRoad(1092, -1100).name]; res.pigments = m.zone('paintworks').roads.lines.filter((l) => l.axis === 'ns' && l.kind === 'street').length;
-        res.closed = [m.roadAt(1252, -837), m.roadAt(1092, -560)]; res.lm = m.landmark('paint-factory'); res.mix = [m.zone('paintworks').traffic, m.zone('paintworks').peds, m.zone('paintworks').pedsBy.night];
+        res.closed = [m.roadAt(1252, -837), m.roadAt(1092, -560)]; res.lm = m.landmark('paint-factory'); res.mix = [m.zone('paintworks').traffic, m.zone('paintworks').peds, m.zone('paintworks').night.peds];
         res.seam = [!!m.nodes.get('800,-677'), !!m.nodes.get('1012,-320')];
         T.teleport(1332, -730, Math.PI); await T.wait(2.5);
         const hAt = (x, z) => { const n = c.circle(x, z, 1.5, undefined, out); return n ? Math.max(...out.slice(0, n).map((s) => s.h)) : 0; };

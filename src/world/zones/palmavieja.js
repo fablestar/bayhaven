@@ -73,16 +73,10 @@ function split(b, addLot, { rng, hash2, overlap }) {
   }
 }
 
-const TRAFFIC = {            // plan/bible/world/palma-vieja.md section 6; ids that are not built yet fall to tarpon
-  dawn: { flounder: 1, mullet: 3, pompano: 3, pinfish: 2, tarpon: 2, possum: 2, snook: 1, hogfish: 3, manatee: 1 },
-  day: { flounder: 3, mullet: 3, pompano: 3, pinfish: 3, tarpon: 2, possum: 2, snook: 2, hogfish: 1, manatee: 1, ibis: 1, taxi: 1, conch: 1 },
-  golden: { flounder: 4, mullet: 2, pompano: 1, pinfish: 3, tarpon: 2, possum: 2, snook: 1, manatee: 1, ibis: 2, taxi: 1, conch: 1 },
-  night: { flounder: 3, mullet: 1, pinfish: 1, tarpon: 2, possum: 1, snook: 1, ibis: 1, taxi: 2 },
-};
-const PEDS = {               // family and vendor are tier B kinds: their weights are in retiree and tourist until then
-  dawn: { retiree: 5, tourist: 2, 'office worker': 2, jogger: 1 }, day: { retiree: 8, tourist: 6, 'office worker': 1 },
-  golden: { retiree: 8, tourist: 5, 'office worker': 1, jogger: 1, clubber: 1 }, night: { retiree: 1, tourist: 1, clubber: 2 },
-};
+// plan/bible/world/palma-vieja.md section 6: the day band, and the night band for when the clock is read.
+// Ids that are not built yet fall to tarpon; family and vendor are tier B kinds, so their weights are in retiree and tourist.
+const DAY = { traffic: { flounder: 3, mullet: 3, pompano: 3, pinfish: 3, tarpon: 2, possum: 2, snook: 2, hogfish: 1, manatee: 1, ibis: 1, taxi: 1, conch: 1 }, peds: { retiree: 8, tourist: 6, 'office worker': 1 } };
+const NIGHT = { traffic: { flounder: 3, mullet: 1, pinfish: 1, tarpon: 2, possum: 1, snook: 1, ibis: 1, taxi: 2 }, peds: { retiree: 1, tourist: 1, clubber: 2 }, cap: 0.4 };
 
 export default {
   id: 'palmavieja', name: 'Palma Vieja',
@@ -104,9 +98,7 @@ export default {
     { id: 'birdbath-car-wash-palma', kind: 'carwash', x: -1450, z: -478 }, { id: 'rafas-table', kind: 'mission', x: -1400, z: -880 },
     { id: 'bay-cab-rank-domino-park', kind: 'taxi', x: -1343, z: -880 },
   ],
-  // the day band is what the traffic and people systems read today; the four bands are here for the clock
-  traffic: TRAFFIC.day, peds: PEDS.day,
-  trafficBy: TRAFFIC, pedsBy: PEDS, pedCap: { dawn: 0.5, day: 1, golden: 1.3, night: 0.4 }, streetSpeed: 8.3, parked: 0.45, hangOut: 0.5,
+  traffic: DAY.traffic, peds: DAY.peds, night: NIGHT, streetSpeed: 8.3, parked: 0.45, hangOut: 0.5,
   ambience: 'oldtown',
   palette: 'palmavieja',
 };

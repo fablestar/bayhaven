@@ -79,16 +79,10 @@ function split(b, addLot, { rng, hash2, overlap }) {
   });
 }
 
-const TRAFFIC = {            // plan/bible/world/paintworks.md section 6; ids that are not built yet fall to tarpon
-  dawn: { pompano: 4, hogfish: 3, mullet: 2, tarpon: 2, pinfish: 1, snook: 1 },
-  day: { pompano: 3, hogfish: 2, mullet: 2, tarpon: 2, pinfish: 3, snook: 2, taxi: 1, wahoo: 1, tern: 1, needlefish: 1 },
-  golden: { pompano: 1, mullet: 1, tarpon: 2, pinfish: 2, snook: 2, taxi: 3, sailfin: 2, wahoo: 2, tern: 2, needlefish: 1, bonito: 1 },
-  night: { pompano: 1, mullet: 1, tarpon: 2, pinfish: 1, snook: 1, taxi: 5, sailfin: 4, wahoo: 3, tern: 2, needlefish: 2, bonito: 2 },
-};
-const PEDS = {               // artist and photographer are tier B kinds: tourists until then; guards are left out
-  dawn: { tourist: 1, 'office worker': 2, jogger: 2 }, day: { tourist: 10, skater: 2, 'office worker': 1 },
-  golden: { tourist: 8, skater: 2, 'office worker': 1, jogger: 1, clubber: 3 }, night: { tourist: 1, skater: 1, clubber: 8 },
-};
+// plan/bible/world/paintworks.md section 6: the day band, and the night band for when the clock is read.
+// Ids that are not built yet fall to tarpon; artist and photographer are tier B kinds (tourists until then), guards are left out.
+const DAY = { traffic: { pompano: 3, hogfish: 2, mullet: 2, tarpon: 2, pinfish: 3, snook: 2, taxi: 1, wahoo: 1, tern: 1, needlefish: 1 }, peds: { tourist: 10, skater: 2, 'office worker': 1 } };
+const NIGHT = { traffic: { pompano: 1, mullet: 1, tarpon: 2, pinfish: 1, snook: 1, taxi: 5, sailfin: 4, wahoo: 3, tern: 2, needlefish: 2, bonito: 2 }, peds: { tourist: 1, skater: 1, clubber: 8 }, cap: 1.3 };
 
 export default {
   id: 'paintworks', name: 'The Paintworks',
@@ -108,9 +102,7 @@ export default {
     { id: 'paintworks-loft', kind: 'property', x: 1430, z: -1117 }, { id: 'food-truck', kind: 'business', x: 1000, z: -1100 },
     { id: 'second-wind-thrift-paintworks', kind: 'shop:thrift', x: 892, z: -720 }, { id: 'bay-cab-rank-seventh-street', kind: 'taxi', x: 1450, z: -917 },
   ],
-  // the day band is what the traffic and people systems read today; the four bands are here for the clock
-  traffic: TRAFFIC.day, peds: PEDS.day,
-  trafficBy: TRAFFIC, pedsBy: PEDS, pedCap: { dawn: 0.25, day: 0.8, golden: 1.1, night: 1.3 }, parked: 0.3,
+  traffic: DAY.traffic, peds: DAY.peds, night: NIGHT, parked: 0.3,
   ambience: 'warehouse',
   palette: 'paintworks',
 };

@@ -169,7 +169,8 @@ export default [
       t.expect(r.tees, '>=', 10, 'T-junctions of one-lane streets in the network');
       t.expect(r.teeOk, '==', true, 'at every such T-junction each lane coming in offers exactly two ways on, neither of them back');
       t.expect(r.backOk && r.noChoiceOk, '==', true, `a lane turns back only where the road truly ends, and always does there (${r.back} turn back, ${r.noChoice} dead ends)`);
-      t.expect(r.edge, '>=', 40, 'junctions at the map edge, next to a barrier');
+      // (D4-S3: 40 on day 2, when every beachfront street ended at a barrier; since day 4 they run on into downtown, Palma Vieja and The Paintworks)
+      t.expect(r.edge, '>=', 10, 'junctions at the map edge, next to a barrier');
       t.expect(r.edgeOk, '==', true, 'every lane into a junction at the map edge leads on (nobody is routed into a barrier)');
       t.expect(r.routeLen, 'between', [r.blocks, r.blocks * 1.3], `route from the spawn round the corner to the far end of the block (m; ${r.blocks} along the grid)`);
       t.expect(Math.hypot(r.routeEnd.x - 52, r.routeEnd.z + 37), '<=', 1, 'the route ends where it was asked to (m off)');

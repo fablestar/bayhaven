@@ -25,6 +25,12 @@ export default {
       get triangles() { const s = chunks.stats(); return s.lod0TrisAvg * s.lod0Built + s.shellTris; },
       refresh(x, z) { colliders.length = collide.circle(x, z, 14, undefined, colliders); },
     };
+    // Past the barriers at the two ends of the beachfront there is bare ground until its districts
+    // are built. The map's bounds used to stop a car there; since they reach the port, a wall does.
+    const t = map.zone('tideline');
+    if (t) for (const [x, side] of [[t.bounds.x1, 1], [t.bounds.x0, -1]]) {
+      if (!map.districtAt(x + side * 10, -100)) colliders.push({ x0: x - (side > 0 ? 5.5 : 0.5), x1: x + (side > 0 ? 0.5 : 5.5), z0: t.bounds.z0, z1: 90, h: 4 });
+    }
     return world;
   },
   update(dt, ctx) { if (world) world.refresh(ctx.state.player.x, ctx.state.player.z); },

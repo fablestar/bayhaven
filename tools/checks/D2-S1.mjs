@@ -124,10 +124,11 @@ export default [
         // Through a barrier section where the map really ends: the east end of Heron Walk Drive. The
         // place comes from the map (its east bound), and the sections are the ones standing there
         // once that chunk has streamed in (D2-S3 moved the edge from x = 100 to the end of Tideline).
-        const map = G.modules.map, road = map.nearestRoad(map.bounds.x1 - 30, 37);
+        // (D4-S3: the map's east bound is the port's now; the drive still ends where the beachfront does.)
+        const map = G.modules.map, eastEnd = Math.min(map.bounds.x1, map.zone('tideline').bounds.x1 - 7), road = map.nearestRoad(eastEnd - 30, 37);
         if (G.modules.traffic && G.modules.traffic.clear) G.modules.traffic.clear(true);
-        await T.ensure(map.bounds.x1 - 20, road.z, 1);
-        const sections = G.props.all.filter((p) => p.kind === 'barrier' && p.x > map.bounds.x1 - 20 && Math.abs(p.z - road.z) < road.width / 2 + 6);
+        await T.ensure(eastEnd - 20, road.z, 1);
+        const sections = G.props.all.filter((p) => p.kind === 'barrier' && p.x > eastEnd - 20 && p.x < eastEnd + 20 && Math.abs(p.z - road.z) < road.width / 2 + 6);
         const edgeX = sections.length ? sections[0].x : NaN, target = sections.find((p) => p.z < road.z) || sections[0];
         const downBefore = G.props.count('barrier', 'down');
         if (target) {
@@ -138,7 +139,7 @@ export default [
         const barriers = G.props.count('barrier', 'down') - downBefore, stoppedAt = T.player().x;
         T.reset();
         return { sparks, shake, crash, thumps, barriers, cones, boardCones, moved, standing: G.props.count(null, 'up'), all: G.props.all.length,
-          sections: sections.length, edgeX, boundX: map.bounds.x1, stoppedAt,
+          sections: sections.length, edgeX, boundX: eastEnd, stoppedAt,
           kinds: Object.fromEntries(Object.entries(G.props.kinds).map(([k, v]) => [k, v.list.length])) };
       });
       t.expect(r.crash, '>=', 1, 'vehicle:crash fired on the wall hit');

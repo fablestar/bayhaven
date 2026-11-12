@@ -65,7 +65,7 @@ function shopHouse(o, lot) {
   // the hand-painted board over the awning, on most houses wide enough for one
   if (w >= 7 && rnd() < 0.7) {
     const U = paintInto(o), text = BOARDS[Math.floor(rnd() * BOARDS.length)], bw = Math.min(5, w - 1.5);
-    U.quad(...wallQuad(c, f, cx, lot.floors > 2 ? 6.9 : h - 0.55, bw, bw / 4, 0.07), 0xffffff, 1, board(text, css(lot.accent === lot.wall ? 0x150f3d : [0xff6f91, 0x2ec4b6, 0xff5a5a, 0x2e4a6b][Math.floor(rnd() * 4)]), 'paint'));
+    U.quad(...wallQuad(c, f, cx, lot.floors > 2 ? 6.9 : h - 0.55, bw, bw / 4, 0.07), 0xffffff, 1, board(text, css(lot.accent === lot.wall ? 0x150f3d : [0xff6f91, 0x2ec4b6, 0xff5a5a, 0x2e4a6b][Math.floor(rnd() * 4)])));
     stats.boards++;
   }
   // a mural on the bare side wall of some corner houses
