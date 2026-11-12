@@ -23,7 +23,7 @@ function findPlaza(collide) {
 
 function createPilot(ctx) {
   const m = ctx.modules, S = ctx.state, ev = ctx.events, hud = m.hud;
-  const x = findPlaza(m.collide) - 3.2, z = PILOT.z, y = m.map.heightAt(x, z);
+  const x = findPlaza(m.collide) + 4.5, z = PILOT.z, y = m.map.heightAt(x, z);
   const score = { best: Math.round(S.stats.peakViewers || 0), last: 0, live: 0, presses: 0, x, z };
   const pilot = { id: PILOT.id, score, armed: true, pressed: false, running: false, marker: { x, z }, calls: 2 };
 
