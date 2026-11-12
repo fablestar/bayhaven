@@ -1,4 +1,5 @@
-// Props you can knock over: lamp posts, barrier sections and neon cones.
+// Props you can knock over: lamp posts (they bend), barrier sections, neon cones, and day 5's
+// breakables: hydrants, cafe tables and chairs, picket fences and sandwich-board signs.
 // Every prop is its own object with its own position, but each kind is drawn as one
 // instanced mesh (one draw call per part), so a hundred cones cost the same as one.
 // Props come and go with their chunk: a kind's mesh has room for `cap` of them and a freed
@@ -36,6 +37,45 @@ function coneGeo() {
   return [B.build()];
 }
 
+// ---- day 5's breakables (plan/04-systems.md section 4) ----
+function hydrantGeo() {
+  const B = new MeshBuilder();
+  B.box(0, 0.05, 0, 0.44, 0.1, 0.44, 0xc8372d, { bottom: true });
+  B.box(0, 0.42, 0, 0.28, 0.64, 0.28, 0xff5a5a);
+  B.box(0, 0.8, 0, 0.2, 0.12, 0.2, 0xfdf6ea);
+  B.box(0, 0.5, 0, 0.5, 0.13, 0.13, 0xfdf6ea, { bottom: true });
+  return [B.build()];
+}
+function tableGeo() {
+  const B = new MeshBuilder();
+  B.box(0, 0.74, 0, 0.8, 0.05, 0.8, 0xfdf6ea, { bottom: true });
+  B.box(0, 0.38, 0, 0.08, 0.68, 0.08, POST);
+  B.box(0, 0.03, 0, 0.44, 0.05, 0.44, POST, { bottom: true });
+  return [B.build()];
+}
+function chairGeo() {               // white: the instance colour paints it
+  const B = new MeshBuilder();
+  B.box(0, 0.45, 0, 0.42, 0.05, 0.42, 0xffffff, { bottom: true });
+  B.box(0, 0.72, -0.19, 0.42, 0.5, 0.04, 0xffffff, { bottom: true });
+  for (const [x, z] of [[-0.18, -0.18], [0.18, -0.18], [-0.18, 0.18], [0.18, 0.18]]) B.box(x, 0.22, z, 0.04, 0.44, 0.04, POST);
+  return [B.build()];
+}
+function fenceGeo() {               // a 2.4 m picket section along x
+  const B = new MeshBuilder();
+  for (const y of [0.35, 0.8]) B.box(0, y, 0, 2.4, 0.08, 0.05, 0x8a6f55, { bottom: true });
+  for (let i = 0; i < 8; i++) B.box(-1.05 + i * 0.3, 0.55, 0.04, 0.16, 1.1, 0.04, i % 2 ? 0xfdf6ea : 0xf2e8d5, { bottom: true });
+  return [B.build()];
+}
+function signGeo() {                // a sandwich board, facing +z and -z
+  const B = new MeshBuilder();
+  for (const s of [1, -1]) {
+    B.box(0, 0.55, s * 0.14, 0.62, 1.0, 0.04, 0xffffff, { bottom: true });
+    B.box(0, 0.72, s * 0.165, 0.46, 0.14, 0.01, POST); B.box(0, 0.5, s * 0.165, 0.36, 0.08, 0.01, POST);
+  }
+  B.box(0, 1.06, 0, 0.62, 0.04, 0.32, POST);
+  return [B.build()];
+}
+
 export function createProps(scene) {
   const lambert = new THREE.MeshLambertMaterial({ vertexColors: true });
   const headMat = new THREE.MeshBasicMaterial({ vertexColors: true });   // lamp heads glow at night
@@ -45,10 +85,17 @@ export function createProps(scene) {
   const lampMats = [lambert, headMat, poolMat, haloMat];
   // hx, hz: half size of the footprint; mode: how it goes down; cap: most alive at once; lights: parts that go out when it falls
   const kinds = {
-    lamp: { geos: lampGeo(1.8), mats: lampMats, mass: 60, hx: 0.2, hz: 0.2, mode: 'topple', rest: 1.52, cap: 640, lights: 2 },
-    lampLong: { geos: lampGeo(3.7), mats: lampMats, mass: 70, hx: 0.2, hz: 0.2, mode: 'topple', rest: 1.52, cap: 192, lights: 2 },
+    lamp: { geos: lampGeo(1.8), mats: lampMats, mass: 60, hx: 0.2, hz: 0.2, mode: 'topple', rest: 1.52, cap: 640, lights: 2, bend: true },
+    lampLong: { geos: lampGeo(3.7), mats: lampMats, mass: 70, hx: 0.2, hz: 0.2, mode: 'topple', rest: 1.52, cap: 192, lights: 2, bend: true },
     barrier: { geos: barrierGeo(), mats: [lambert], mass: 25, hx: 1.2, hz: 0.25, mode: 'topple', rest: 1.5, cap: 256 },
     cone: { geos: coneGeo(), mats: [neonMat], mass: 3, hx: 0.25, hz: 0.25, mode: 'fly', rest: 1.72, cap: 192 },
+    // bend: a lamp post leans as far as the hit was hard. gone: a fence is taken away at once and
+    // comes back as splinters in the debris pool (the breakables module makes them)
+    hydrant: { geos: hydrantGeo(), mats: [lambert], mass: 80, hx: 0.22, hz: 0.22, mode: 'fly', rest: 1.57, cap: 64 },
+    table: { geos: tableGeo(), mats: [lambert], mass: 12, hx: 0.4, hz: 0.4, mode: 'fly', rest: 1.57, cap: 64 },
+    chair: { geos: chairGeo(), mats: [lambert], mass: 4, hx: 0.21, hz: 0.21, mode: 'fly', rest: 1.57, cap: 128 },
+    fence: { geos: fenceGeo(), mats: [lambert], mass: 20, hx: 1.2, hz: 0.1, mode: 'gone', rest: 0, cap: 128 },
+    sign: { geos: signGeo(), mats: [lambert], mass: 9, hx: 0.31, hz: 0.18, mode: 'topple', rest: 1.5, cap: 64 },
   };
   const all = [], moving = new Set(), byId = new Map();
   const rnd = rng(4242);
@@ -78,7 +125,7 @@ export function createProps(scene) {
     m4.compose(pos, q, one);
     const k = kinds[p.kind], lit = k.meshes.length - (k.lights || 0);
     k.meshes.forEach((mesh, i) => {
-      mesh.setMatrixAt(p.idx, i >= lit && (p.state !== 0 || p.noLight) ? zero : m4); mesh.instanceMatrix.needsUpdate = true;
+      mesh.setMatrixAt(p.idx, p.hidden || (i >= lit && (p.state !== 0 || p.noLight)) ? zero : m4); mesh.instanceMatrix.needsUpdate = true;
     });
   }
 
@@ -130,6 +177,8 @@ export function createProps(scene) {
     knock(p, vx, vz) {
       const k = kinds[p.kind], sp = Math.hypot(vx, vz);
       p.state = 1; p.fall = Math.atan2(vx, vz) + (rnd() - 0.5) * 0.5;
+      p.rest = k.bend ? Math.max(0.45, Math.min(k.rest, 0.3 + sp * 0.045)) : k.rest;      // 60 km/h bends a lamp post to 60 degrees; 100 lays it flat
+      if (k.mode === 'gone') { p.state = 2; p.hidden = true; write(p); if (p.onChange) p.onChange(true); return; }
       if (k.mode === 'fly') {
         const side = (rnd() - 0.5) * 0.9;
         p.vx = vx * (0.75 + rnd() * 0.4) + vz * side * 0.3; p.vz = vz * (0.75 + rnd() * 0.4) - vx * side * 0.3;
@@ -158,23 +207,23 @@ export function createProps(scene) {
           p.vy -= 12 * dt; p.y += p.vy * dt; p.tilt += p.tiltV * dt;
           if (p.y <= p.home.y) {            // bounce, then lie on its side
             p.y = p.home.y;
-            if (p.vy < -1.5) { p.vy *= -0.35; p.tiltV *= 0.6; } else { p.vy = 0; p.tiltV = 0; p.tilt += (k.rest - (p.tilt % (Math.PI * 2))) * Math.min(1, dt * 10); }
+            if (p.vy < -1.5) { p.vy *= -0.35; p.tiltV *= 0.6; } else { p.vy = 0; p.tiltV = 0; p.tilt += (p.rest - (p.tilt % (Math.PI * 2))) * Math.min(1, dt * 10); }
             const f = Math.max(0, 1 - 3 * dt); p.vx *= f; p.vz *= f; p.yawV *= f;
           }
         } else {
           p.tiltV += 7 * Math.sin(Math.max(0.05, p.tilt)) * dt; p.tilt += p.tiltV * dt;
-          if (p.tilt >= k.rest) { p.tilt = k.rest; p.tiltV = p.tiltV > 2 ? -p.tiltV * 0.25 : 0; }
+          if (p.tilt >= p.rest) { p.tilt = p.rest; p.tiltV = p.tiltV > 2 ? -p.tiltV * 0.25 : 0; }
           const f = Math.max(0, 1 - 2.5 * dt); p.vx *= f; p.vz *= f; p.yawV *= f;
         }
         write(p);
-        if (p.vy === 0 && p.tiltV === 0 && Math.hypot(p.vx, p.vz) < 0.15 && Math.abs(p.tilt % (Math.PI * 2) - k.rest) < 0.05) { p.state = 2; moving.delete(p); }
+        if (p.vy === 0 && p.tiltV === 0 && Math.hypot(p.vx, p.vz) < 0.15 && Math.abs(p.tilt % (Math.PI * 2) - p.rest) < 0.05) { p.state = 2; moving.delete(p); }
       }
     },
     // stand everything back up (the R key)
     reset() {
       for (const p of all) {
         if (p.state === 0) continue;
-        Object.assign(p, p.home, { state: 0, vx: 0, vy: 0, vz: 0, tilt: 0, tiltV: 0, yaw: 0, yawV: 0 });
+        Object.assign(p, p.home, { state: 0, vx: 0, vy: 0, vz: 0, tilt: 0, tiltV: 0, yaw: 0, yawV: 0, hidden: false });
         write(p);
         if (p.onChange) p.onChange(false);
       }

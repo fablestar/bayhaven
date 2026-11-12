@@ -1,7 +1,7 @@
 // The people of Bayhaven: instanced box figures on every sidewalk, the promenade and the sand,
 // for eight draw calls. They walk the sidewalk graph, wait for lights, hang out, film trouble, run
 // from cars and get knocked over. Work is in peds.js (who and where), pedsreact.js (filming, horn),
-// pedsdraw.js (the eight meshes), pedspose.js (angles), pedstumble.js (the rope), pedskinds.js (data).
+// pedsdraw.js (the eight meshes), pedspose.js (angles), tumble.js (the rope, and who stays down), pedskinds.js (data).
 // Public object: { count, list, kinds, stats(), add(kind, x, z, h, opts), remove(p), crowd(def), disband(crowd),
 //   join(crowd, kind, x, z, h, shirt), hold(crowd, p), release(p, how, x, z), near(x, z, r), trigger(seconds, 'crash' or 'stunt'), freeze(seconds, range), filming, interest }.
 // Owns state.peds = { count, filming, interest, down }. Emits ped:hit, ped:filming, ped:fled, ped:gotup.
@@ -11,7 +11,7 @@ import { createPeds, PEDS } from './peds.js';
 import { createPedDraw } from './pedsdraw.js';
 import { poseFor } from './pedspose.js';
 import { KINDS, KIND_IDS, mixFor, targetFor } from './pedskinds.js';
-import { TUMBLE } from './pedstumble.js';
+import { TUMBLE } from './tumble.js';
 import { REACT } from './pedsreact.js';
 
 const CAP = { low: 192, medium: 224, high: 256 }, ROPES = { low: 2, medium: 5, high: 8 };
@@ -52,7 +52,7 @@ export default {
       let calls = 0; for (const mesh of draw.meshes) if (mesh.visible && mesh.count > 0) calls++;
       if (draw.shadows.visible && draw.shadows.count > 0) calls++;
       return { count: sim.list.length, within, street, target: sim.retarget(), cap: sim.cap, streetCap: sim.streetCap, calls, meshes: draw.calls, filming: sim.react.filming, interest: sim.react.interest,
-        down: 0, byState, byKind, frozen: sim.react.frozen || 0, crowdScale: sim.crowdScale, gained: sim.react.gained, ms, drawMs, triangles: draw.triangles(sim.list.length), ...sim.stats };
+        down: sim.downs(), byState, byKind, frozen: sim.react.frozen || 0, crowdScale: sim.crowdScale, gained: sim.react.gained, ms, drawMs, triangles: draw.triangles(sim.list.length), ...sim.stats };
     }
     api = {
       get count() { return sim.list.length; }, get list() { return sim.list; }, get filming() { return sim.react.filming; }, get interest() { return sim.react.interest; },
@@ -60,6 +60,10 @@ export default {
       kinds: KINDS, numbers: { PEDS, REACT, TUMBLE, CAP }, stats, info,
       add: (kind, x, z, h = 0, opts) => sim.add(kind, x, z, h, opts),
       remove: (p) => { if (!p.gone) sim.remove(p); },
+      // day 5: who is down (for the ambulance), an explosion's push, and a fright
+      downed(out = []) { out.length = 0; for (const p of sim.list) if (p.state === 'down') out.push(p); return out; },
+      blast: (x, z, r = 6) => sim.blast(x, z, r),
+      scare: (p, x, z) => sim.flee(p, x, z),
       near(x, z, r, out = []) { out.length = 0; for (const p of sim.list) if ((p.x - x) * (p.x - x) + (p.z - z) * (p.z - z) <= r * r) out.push(p); return out; },
       trigger: (seconds, code = 'crash', x, z) => sim.react.trigger(seconds, code, x, z),
       freeze: (seconds, range) => sim.react.freeze(seconds, range),
@@ -77,6 +81,7 @@ export default {
       },
     };
 
+    ctx.events.on('vehicle:blast', (e) => { if (e) sim.blast(e.x, e.z, e.radius || 6); });
     ctx.test.peds = {
       stats, kinds: () => KIND_IDS.map((id) => ({ id, ...KINDS[id] })),
       list: (r = 1e9) => sim.list.filter((p) => Math.hypot(p.x - sim.focus.x, p.z - sim.focus.z) <= r).map(info),
@@ -106,7 +111,7 @@ export default {
     sim.cars.length = 0; sim.cars.push(car);
     if (m.vehicles.near) for (const v of m.vehicles.near(f.x, f.z, 60, near)) if (v !== car && v.kind !== 'parked' && v.kind !== 'wreck') sim.cars.push(v);
     sim.step(dt);
-    const s = ctx.state.peds; s.count = sim.list.length; s.filming = sim.react.filming; s.interest = sim.react.interest;
+    const s = ctx.state.peds; s.count = sim.list.length; s.down = sim.downs(); s.filming = sim.react.filming; s.interest = sim.react.interest;
     ms += (performance.now() - t0 - ms) * 0.05;
   },
   render(alpha, ctx) {

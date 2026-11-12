@@ -57,3 +57,12 @@ export function stepRope(rope, dt, groundAt) {
   if (rope.still >= TUMBLE.restFor || rope.t >= TUMBLE.longest) rope.done = true;
   return rope.done;
 }
+
+// What a hit does to a person (plan/04-systems.md section 4, plan/bible/systems/people.md): everyone has
+// 50 health; a vehicle takes off km/h - 10. Over 50 km/h, or with no health left, they stay down
+// and an ambulance is called; otherwise they tumble, lie dazed and get up.
+export const HIT = { health: 50, hardKmh: 50, spare: 10, downFor: 120, downUnseen: 45 };
+export function hitOutcome(kmh, health = HIT.health) {
+  const left = Math.max(0, health - Math.max(0, kmh - HIT.spare));
+  return { health: left, down: kmh > HIT.hardKmh || left <= 0 };
+}

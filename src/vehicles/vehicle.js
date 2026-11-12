@@ -92,6 +92,7 @@ export function createCar(scene, world, props, events, paint = 0xff4f6e, accent 
   let R = 1.05, offs = [1.2, -1.2];
   const fall = { x: 0, z: 0, vx: 0, vz: 0, h: 0 };
   fit();
+  const DEAD = { steer: 0, gas: 0, brake: 0, handbrake: true, touch: false };                  // a destroyed car: no engine, wheels locked
   const STUNNED = { steer: 0, gas: 0, brake: 1 / 3, handbrake: false, touch: false };       // a riderless bike slides to rest at 8 m/s2
   // the circles that keep it out of walls: day 2's pair for the first six models; the new ones are
   // sized to the model, so the cart fits a sidewalk and the bus is long
@@ -193,7 +194,7 @@ export function createCar(scene, world, props, events, paint = 0xff4f6e, accent 
     const special = !!(car.special || inp.special), fx0 = Math.sin(car.h), fz0 = Math.cos(car.h);
     // a hit from another car since the last step shows up as a jump in speed
     const hitDv = Math.hypot(fx0 * car.vf + fz0 * car.vl - pvx, fz0 * car.vf - fx0 * car.vl - pvz);
-    car.drive(car.thrown > 0 || car.dead ? STUNNED : inp, env);         // a destroyed car only rolls to a stop
+    car.drive(car.dead ? DEAD : car.thrown > 0 ? STUNNED : inp, env);         // a destroyed car only rolls to a stop
     scrapeT -= DT;
     // the hop (the Flounder): a tap of `special` throws the car 0.49 m up; 0.6 s before the next
     hopCool -= DT;

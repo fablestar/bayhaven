@@ -1,10 +1,10 @@
 // Street people: who is out, where they walk, and what state each is in (plan/04 section 6,
 // plan/bible/systems/people.md). No three.js: pedsdraw.js draws what this decides.
 // States: walk, cross, hang (sit, lean, chat, sunbathe, phone, look, shout, wave), flee, film,
-// dodge, fall (a rope), dazed, getup, crowd (a member of a crowd, with no brain of its own).
+// dodge, fall (a rope), dazed, getup, down (hit hard: they stay there until the ambulance or the clock takes them), crowd (a member of a crowd, with no brain of its own).
 import { KINDS, dress, mixFor, targetFor } from './pedskinds.js';
 import { FACE } from './pedsfaces.js';
-import { startRope, stepRope, HIPS, NECK } from './pedstumble.js';
+import { startRope, stepRope, HIPS, NECK, HIT, hitOutcome } from './tumble.js';
 import { createReactions } from './pedsreact.js';
 
 export const PEDS = { radius: 0.35, ringIn: 60, ringOut: 140, gone: 150, full: 40, space: 1.2, filmRange: 40, hornRange: 15,
@@ -211,7 +211,7 @@ export function createPeds({ map, nav, collide, signals, events, state, cap, rop
     if (rnd() < 0.5) hang(p); else freeGoal(p);
   }
   function flee(p, fromX, fromZ) {
-    if (p.state === 'flee' || p.rope || p.state === 'dazed' || p.state === 'getup') return;
+    if (p.state === 'flee' || p.rope || p.state === 'dazed' || p.state === 'getup' || p.state === 'down') return;
     let dx = p.x - fromX, dz = p.z - fromZ; const d = Math.hypot(dx, dz) || 1, far = 30 + rnd() * 30;
     dx /= d; dz /= d;
     p.back = null; p.hold = null; p.mode = 'free'; p.tx = p.x + dx * far; p.tz = p.z + dz * far;
@@ -227,6 +227,8 @@ export function createPeds({ map, nav, collide, signals, events, state, cap, rop
     p.hold = null; p.back = null; p.crowd = null; p.street = true; p.frozen = 0;
     setState(p, 'fall'); p.face = FACE.shocked;
     sim.stats.hits++;
+    const out = hitOutcome(speed * 3.6, p.health === undefined ? HIT.health : p.health);
+    p.health = out.health; p.hard = out.down || !!c.blast; p.by = c === sim.car ? 'player' : c.blast ? 'blast' : 'traffic';
     events.emit('ped:hit', { speed, kmh: speed * 3.6, x: p.x, z: p.z, kind: p.kind, id: p.id, by: c === sim.car ? 'player' : 'traffic' });
   }
   function carsAndPeople(p) {
@@ -271,7 +273,25 @@ export function createPeds({ map, nav, collide, signals, events, state, cap, rop
     if (!r.canned) p.h = Math.atan2(r.p[HIPS * 3] - r.p[NECK * 3], r.p[HIPS * 3 + 2] - r.p[NECK * 3 + 2]);
     body.x = p.x; body.z = p.z; collide.pushOutCircle(body); p.x = body.x; p.z = body.z;
     p.rope = null; p.y = ground(p.x, p.z);
+    if (p.hard) {          // a hard hit: no getting up from this one
+      setState(p, 'down'); p.face = FACE.shocked; p.downT = 0; p.v = 0; sim.stats.downs = (sim.stats.downs || 0) + 1;
+      events.emit('ped:down', { id: p.id, kind: p.kind, x: p.x, z: p.z, cause: p.by === 'blast' ? 'blast' : 'vehicle', by: p.by });
+      return;
+    }
     setState(p, 'dazed', null, PEDS.dazed); p.face = FACE.dizzy;
+  }
+  // an explosion: everyone inside r is thrown outwards; near the middle they stay down (120 health at the centre, none at r)
+  const blastCar = { h: 0, vf: 0, vl: 0, blast: false };
+  function blast(x, z, r) {
+    let n = 0;
+    for (const p of list.slice()) {
+      const dx = p.x - x, dz = p.z - z, d = Math.hypot(dx, dz);
+      if (d >= r || p.rope || p.state === 'down' || p.state === 'crowd') continue;
+      const hurt = 120 * (1 - d / r);
+      blastCar.h = Math.atan2(dx, dz); blastCar.vf = 4 + 8 * (1 - d / r); blastCar.blast = hurt >= (p.health === undefined ? HIT.health : p.health);
+      hit(p, blastCar, blastCar.vf); n++;
+    }
+    return n;
   }
 
   function stepOne(p, dt, near) {
@@ -301,6 +321,7 @@ export function createPeds({ map, nav, collide, signals, events, state, cap, rop
       case 'fall': fall(p, dt); break;
       case 'dazed': p.timer -= dt; if (p.timer <= 0) { setState(p, 'getup'); p.face = FACE.angry; } break;
       case 'getup': if (p.st >= PEDS.getUp) { resume(p); p.annoyed = 1.5; p.slow = 10; p.face = FACE.angry; events.emit('ped:gotup', { id: p.id, kind: p.kind, x: p.x, z: p.z }); } break;
+      case 'down': p.downT += dt; if (p.downT > HIT.downFor || (p.downT > HIT.downUnseen && !inView(p.x, p.z))) remove(p); break;
       default: break;        // 'crowd': the crowd moves its members
     }
     if (p.state !== 'fall') p.y = ground(p.x, p.z);
@@ -308,7 +329,8 @@ export function createPeds({ map, nav, collide, signals, events, state, cap, rop
   }
 
   Object.assign(sim, {
-    add, remove, setState, flee, hit, resume, streetCount, hang,
+    add, remove, setState, flee, hit, resume, streetCount, hang, blast,
+    downs() { let n = 0; for (const p of list) if (p.state === 'down') n++; return n; },
     clear() { while (list.length) remove(list[list.length - 1]); filled = false; },
     release(p) { p.crowd = null; p.street = true; resume(p); },
     fill() { sim.retarget(); for (let n = 0; n < 400 && streetCount() < sim.target; n++) spawnOne(true); filled = true; },
@@ -344,7 +366,7 @@ export function createPeds({ map, nav, collide, signals, events, state, cap, rop
         if (d2 > PEDS.gone * PEDS.gone && p.street) { remove(p); continue; }
         const near = d2 < PEDS.full * PEDS.full || p.rope;
         if (near) {
-          if (cars.length) carsAndPeople(p);
+          if (cars.length && p.state !== 'down') carsAndPeople(p);
           stepOne(p, dt, true);
         } else if ((p.id + tick) % 6 === 0) stepOne(p, dt * 6, false);
       }

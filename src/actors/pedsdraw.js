@@ -4,7 +4,7 @@
 // a skin colour and a cell of the people atlas. Poses are maths (section 6 of the same file).
 import * as THREE from 'three';
 import { boxes, drawSheet } from './rigart.js';
-import { HEAD, NECK, CHEST, HIPS, HAND_L, HAND_R, FOOT_L, FOOT_R } from './pedstumble.js';
+import { HEAD, NECK, CHEST, HIPS, HAND_L, HAND_R, FOOT_L, FOOT_R } from './tumble.js';
 
 import { FACE } from './pedsfaces.js';
 const W = 256, H = 128, EXTRAS = 4, BIRDS = 12;

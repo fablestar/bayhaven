@@ -52,8 +52,8 @@ export function poseFor(p, t, o, far) {
   } else if (st === 'dodge') {
     const u = clamp(p.st / 0.35, 0, 1);
     o.hips += 0.25 * Math.sin(u * Math.PI); o.outL = o.outR = 0.9; o.legL = 0.3; o.legR = -0.3; o.lean = 0.15; o.face = FACE.shocked;
-  } else if (st === 'dazed' || st === 'fall') {
-    o.pitch = -1.57; o.hips = 0.12; o.outL = 0.7; o.outR = 1.1; o.legL = 0.15; o.legR = -0.25; o.head = 0.5; o.face = st === 'fall' ? FACE.shocked : FACE.dizzy;
+  } else if (st === 'dazed' || st === 'fall' || st === 'down') {
+    o.pitch = -1.57; o.hips = 0.12; o.outL = 0.7; o.outR = 1.1; o.legL = 0.15; o.legR = -0.25; o.head = 0.5; o.face = st === 'dazed' ? FACE.dizzy : FACE.shocked;
   } else if (st === 'getup') {
     const u = clamp(p.st / 1.2, 0, 1), a = clamp(p.st / 0.9, 0, 1);
     o.hips = 0.30 + 0.50 * u; o.pitch = -1.57 * Math.max(0, 1 - u * 3);
@@ -76,7 +76,7 @@ export function poseFor(p, t, o, far) {
   } else if (st === 'crowd') {
     dance(o, p.beat);
   }
-  if (st !== 'crowd' && st !== 'dazed' && st !== 'getup' && o.pitch === 0 && v < 0.15) {
+  if (st !== 'crowd' && st !== 'dazed' && st !== 'down' && st !== 'getup' && o.pitch === 0 && v < 0.15) {
     o.hips += 0.008 * Math.sin(1.57 * t + k * 20);      // breath
   }
   return o;
