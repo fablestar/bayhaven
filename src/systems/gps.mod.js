@@ -94,7 +94,7 @@ export default {
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 1.5, -1.5, 0, 0, -1.5, 0, -0.9, 0, 0, 0.6, 1.5, 0, 0, 1.5, 0, -0.9], 3));
     geo.setIndex([0, 1, 2, 0, 2, 3, 0, 3, 5, 0, 5, 4]);
-    const mesh = new THREE.InstancedMesh(geo, new THREE.MeshBasicMaterial({ color: 0x29e6ff, transparent: true, opacity: 0.34, depthWrite: false, side: THREE.DoubleSide,
+    const mesh = new THREE.InstancedMesh(geo, new THREE.MeshBasicMaterial({ color: 0x29e6ff, transparent: true, opacity: 0.34, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true,
       polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), CHEVRONS);
     mesh.frustumCulled = false; mesh.count = 0; mesh.visible = false; mesh.renderOrder = 2;
     ctx.scene.add(mesh);

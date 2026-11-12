@@ -235,11 +235,16 @@ export default [
         const c0 = await calls();
         T.waypoint(52, -900); await T.wait(0.3);
         const c1 = await calls(), mm = T.minimap(), gps = T.gps();
-        return { c0, c1, mm, gps, mode: T.hud().mode };
+        // and off again: the scene moves between counts, so the cost is measured against both sides
+        T.waypoint(); await T.wait(0.3);
+        const c2 = await calls();
+        return { c0, c1, c2, mm, gps, mode: T.hud().mode };
       });
       t.expect(r.mm.rect.w, '==', 120, 'minimap size on a phone');
       t.expect(r.mm.colours, '>=', 3, 'colours');
-      t.expect(r.c1 - r.c0, '<=', 1, 'draw calls added by the route chevrons');
+      t.expect(r.gps.chevrons, '>', 0, 'chevrons on the road');
+      t.expect(r.c1 - Math.max(r.c0, r.c2), '<=', 1, 'draw calls added by the route chevrons');
+      t.note(`draw calls without, with, without a route: ${r.c0}, ${r.c1}, ${r.c2}`);
       t.expect(r.mm.ms, '<', 6, 'milliseconds for one repaint');
       t.note(`hud mode ${r.mode}, repaint ${r.mm.ms.toFixed(2)} ms, ${r.gps.chevrons} chevrons`);
     },
