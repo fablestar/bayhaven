@@ -121,7 +121,7 @@ export function createRoadblocks({ S, ev, m, cops, quality }) {
     blocks, stats, numbers: BLOCK, predict, mend, burst,
     clear(why = 'clear') { for (const b of blocks.slice()) lift(b, why); waitT = 0; },
     // put one where the rule would, without waiting (a check)
-    force() { const r = predict(); if (!r) return null; for (let i = 1; i < r.length; i++) if (r[i].metres >= BLOCK.min && r[i].metres <= BLOCK.max) { const b = place(r[i]); if (b) return b; } return null; },
+    force() { const r = predict(); if (!r) return null; for (let i = 1; i < r.length; i++) if (r[i].metres - BLOCK.before >= BLOCK.min && r[i].metres <= BLOCK.max) { const b = place(r[i]); if (b) return b; } return null; },
     update(dt) {
       const L = S.heat.level, p = S.player, car = m.vehicles.player;
       // a rim on the road throws sparks
@@ -164,7 +164,7 @@ export function createRoadblocks({ S, ev, m, cops, quality }) {
       stats.tries++;
       for (let i = 1; i < route.length; i++) {
         const n = route[i];
-        if (n.metres < BLOCK.min || n.metres > BLOCK.max || n.lane.len < 30 || blocks.some((b) => b.key === n.key)) { stats.why = 'range'; continue; }
+        if (n.metres - BLOCK.before < BLOCK.min || n.metres > BLOCK.max || n.lane.len < 30 || blocks.some((b) => b.key === n.key)) { stats.why = 'range'; continue; }
         if (place(n)) break;
       }
     },

@@ -45,3 +45,16 @@ Input: the hop reads `actions.special`, and until core has that action, `actions
 Stand-ins I left: `subtitle.js` (one line of speech at the bottom of the screen; the HUD lane should show `ui:toast` with `kind: 'subtitle'` and delete it) and `voice.js` / `voice.mod.js` (class engines and horns; the Sound lane should read `modules.vehicles.sounds`, after which these go). The player's car still reads `modules.world.colliders` and `bounds`; cars knocked loose use `modules.collide`.
 
 Not yet matching the bible: no lane changes (a car takes whatever its lane allows), no right turn on red, no pulled over, panic or rubberneck states (they wait for sirens and weapons), no alarms, traffic does not knock props over, no ambulances or timetabled vehicles, no headlight beams on traffic.
+
+## The news helicopter (session D5-S2: `chopper.mod.js`)
+
+| Name | Signature | Meaning |
+|---|---|---|
+| modules.chopper | `active` (the helicopter cam is on) · `list [{ n, x, y, z, h, state, sees, d, speed }]` · `count` · `onScene` · `cam(on) → bool` · `toggle()` · `sees(x, z) → bool` · `disc { x, y, z, on, opacity, r }` · `numbers` · `stats` | The Mayfly, from heat 3: made 380 m off, on the scene inside 8 s, 60 m up and 45 m out behind and to the left at up to 70 m/s, circling when the player stops. `state`: `in on search out`. Its spotlight disc (14 m) follows the player with a 0.4 s lag, so a car above about 70 km/h in a straight line is outside it. While the disc is on the player the helicopter is a camera: `modules.cops.sees` is wrapped to include it, so the heat module counts the player as seen. A car wash hides the player. Unseen for 3 s it loops the last seen point at 60 m and sweeps the disc through it. At heat 4 off `low` a second one in the Sheriff's colours flies 55 m ahead and 40 m up; it only watches. Grounded in `storm` and `hurricane` weather and by `state.mission.flags.heat.noHelicopter`. Two draw calls each, plus the disc and the beam |
+| the helicopter cam | V, a pad's Back button, or the `#chopper-cam` button | From heat 3 with the helicopter on the scene: the camera is set after `modules.camera` each frame to the helicopter's nose, looking at the player, 35 degrees wide; a red `CHOPPER CAM` tag is painted on the HUD canvas. Off again on the key, when heat clears, when the helicopter leaves, or after 2 s under cover |
+| the rotor | | Looped noise chopped by a 12 Hz square wave through a 900 Hz low-pass on the `effects` bus, by distance out to 260 m |
+| test | `test.chopper()` · `test.chopperCam(on)` | |
+
+Events: `chopper:arrived { n, seconds }`, `chopper:left { n }`, `chopper:cam { on }`, one `ui:toast` hint a chase. Listens: `game:reset`, `heat:cleared`, its own `keydown` for V.
+
+Not built: shooting it down (health 100), the Horsefly's speaker and marksman, cover from bridges and garages (none on the map yet).

@@ -1,0 +1,12 @@
+{
+  "id": "veh-news-mayfly",
+  "kind": "model:vehicle",
+  "replaces": "vehicle:mayfly",
+  "ask": "A small three-seat news helicopter. Low-poly toy style, big flat faces, no fine detail. Rounded white pod with a dark glass nose, a thin violet tail boom with a small fin, two skids, a two-blade main rotor as a separate part, a round spotlight and a small camera ball under the nose. A large plain numeral 6 on each side of the pod. No other lettering, no logos, generic shape.",
+  "size": { "l": 6.6, "w": 1.7, "h": 2.6 },
+  "budget": { "tris": 2500, "bytes": 180000 },
+  "parts": ["body", "rotor", "tail_rotor", "spotlight"],
+  "views": "three-quarter front from below, side",
+  "why": "It is over every chase from heat 3 and it is what the helicopter cam looks out of. The code version is boxes from the Dragonfly sheet (src/vehicles/chopper.mod.js).",
+  "tier": "A", "asked": "d5-s2"
+}

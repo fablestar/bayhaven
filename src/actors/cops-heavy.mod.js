@@ -54,15 +54,16 @@ export default {
     const roadblocks = createRoadblocks({ S, ev, m, cops, quality: ctx.quality });
     const stats = { retired: 0, broadcasts: 0, horns: 0, chat: 0, ticker: 0 };
     const marks = {};
-    let retireT = 0, fillT = HEAVY.filler, hornT = 2, truckNear = false, live = false, copFireT = -99, gunT = -99, shootT = -99, time = 0, big = false;
+    let stepL = 0, stepT = 0, retireT = 0, fillT = HEAVY.filler, hornT = 2, truckNear = false, live = false, copFireT = -99, gunT = -99, shootT = -99, time = 0, big = false;
     const say = (trigger) => { if (m.live && m.live.fire) stats.chat += m.live.fire(trigger) || 0; };
     const line = (on, data) => { if (m.live && m.live.line) { m.live.line(on, data || {}, true); stats.ticker++; } };
 
     ev.on('heat:changed', (e) => {
       const on = e.level >= 4;
       if (on !== live) { live = on; stats.broadcasts++; ev.emit('heat:broadcast', { on, level: e.level }); }
-      if (e.level === 4 && e.from < 4) { say('heat4'); line('step4'); }
-      if (e.level === 5 && e.from < 5) { say('heat5'); line('step5'); hornT = 3; truckNear = false; }
+      // said a moment later: when heat jumps straight in from under 3 the overlay starts clean, and would wipe these
+      if (e.level === 4 && e.from < 4) { stepL = 4; stepT = 0.5; }
+      if (e.level === 5 && e.from < 5) { stepL = 5; stepT = 0.5; hornT = 3; truckNear = false; }
       if (e.level === 0) { for (const k in marks) delete marks[k]; big = false; }
     });
     ev.on('heat:live', (e) => {
@@ -119,6 +120,7 @@ export default {
           }
         }
         roadblocks.update(dt);
+        if (stepL && (stepT -= dt) <= 0) { if (L === stepL) { say('heat' + L); line('step' + L); fillT = HEAVY.filler; } stepL = 0; }
         if (L < 4) return;
         // the chat's own lines for these levels, when it has been quiet
         if (S.heat.seen && (fillT -= dt) <= 0) { fillT = HEAVY.filler; say('filler' + L); }

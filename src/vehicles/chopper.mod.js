@@ -2,7 +2,8 @@
 // From heat 3 it arrives inside 8 s and holds 60 m up and 45 m out, behind and to the left; it circles
 // when you stop. Its spotlight is a 14 m disc that trails you by 0.4 s: while the disc is on you it is a
 // camera, so viewers do not drain (above about 70 km/h in a straight line you outrun the disc; a car wash
-// hides you from it). When nobody has seen you for 3 s it sweeps the last place you were seen.
+// hides you from it). It stays with a car it can see within 150 m, but one that keeps out of its light for 12 s
+// with no deputy watching is lost (there is no bridge or garage to hide under yet): then it sweeps the last place it had you.
 // At heat 4 a second one in the Sheriff's colours flies ahead and lower (not on `low`); it only watches.
 // The helicopter cam (V, a pad's Back button, or the on-screen button): the view moves to the helicopter,
 // 35 degrees wide, tagged CHOPPER CAM. After 2 s under cover the chase camera returns.
@@ -12,7 +13,7 @@ import * as THREE from 'three';
 import { MeshBuilder, glowTexture } from '../gfx/builder.js';
 
 export const CHOPPER = { from: 3, second: 4, up: 60, out: 45, up2: 40, ahead: 55, top: 70, spawn: 380, scale: 0.94, rotor: 6, disc: 14, trail: 0.4, beam: 110,
-  lost: 3, sweep: 60, fov: 35, cover: 2, chop: 12, lowpass: 900, hear: 260 };
+  lost: 3, reach: 150, shake: 12, sweep: 60, fov: 35, cover: 2, chop: 12, lowpass: 900, hear: 260 };
 const WHITE = 0xfdf6ea, VIOLET = 0xb46bff, GLASS = 0x1d2a3a, INK = 0x23233a, TEAL = 0x14b0a5, PINK = 0xff4fa8;
 const piece = (B, L, W, H, fwd, y0, col, x = 0) => B.box(x, y0 + H / 2, fwd, W, H, L, col);
 
@@ -53,6 +54,8 @@ export default {
     const lam = new THREE.MeshLambertMaterial({ vertexColors: true }), rotorGeo = rotorGeometry();
     const list = [], stats = { arrived: 0, left: 0, camOn: 0, coverOffs: 0, seenSteps: 0, soundOn: false, gain: 0 };
     const disc = { x: 0, z: 0, y: 0, on: false, opacity: 0, r: CHOPPER.disc / 2 };
+    const spot = { x: 0, z: 0 };                     // where the helicopters think the player is
+    let tracking = false, darkT = 0;
     let time = 0, camOn = false, coverT = 0, hinted = false, lastPad = false, tagRect = null, tagDrawn = false;
 
     // the spotlight: a disc on the ground and a faint cone down to it
@@ -127,7 +130,7 @@ export default {
     }
 
     function fly(h, dt) {
-      const p = S.player, L = S.heat.level, known = L > 0 && (S.heat.seen || S.heat.unseenT < CHOPPER.lost), last = S.heat.last;
+      const p = S.player, known = tracking, last = spot;
       const fx = Math.sin(p.h), fz = Math.cos(p.h), speed = Math.abs(p.kmh || 0) / 3.6;
       let tx, tz, ty;
       h.t += dt;
@@ -177,13 +180,22 @@ export default {
           else if (n <= want && h && h.state === 'out') h.state = 'in';
         }
         list.sort((a, b) => a.n - b.n);
+        // do they know where the player is? A deputy does (or did 3 s ago), or the first helicopter has them within 150 m
+        // and they have not kept out of its light for 12 s
+        const lead = list[0] && list[0].n === 1 && list[0].state !== 'out' && list[0].state !== 'in' ? list[0] : null;
+        darkT = lead && lead.sees ? 0 : darkT + dt;
+        const byDeputy = L > 0 && (S.heat.seen || S.heat.unseenT < CHOPPER.lost), wasTracking = tracking;
+        const byAir = !!lead && wasTracking && lead.d < CHOPPER.reach && darkT < CHOPPER.shake && !(heat.hidden && heat.hidden());
+        tracking = L > 0 && (byDeputy || byAir);
+        if (tracking) { spot.x = p.x; spot.z = p.z; } else if (!wasTracking && L > 0 && !list.length) { spot.x = S.heat.last.x; spot.z = S.heat.last.z; }
+        if (L === 0) { tracking = false; darkT = 0; }
         for (const h of list.slice()) fly(h, dt);
         // the disc: trails the player by 0.4 s while the helicopter knows where they are; sweeps while it searches
         const h1 = list[0] && list[0].n === 1 ? list[0] : null;
         disc.on = !!h1 && (h1.state === 'on' || h1.state === 'search');
         if (disc.on) {
           let gx = p.x, gz = p.z;
-          if (h1.state === 'search') { const a = h1.orbit * 1.7, r = 38 * Math.abs(Math.sin(h1.orbit * 0.9)); gx = S.heat.last.x + Math.sin(a) * r; gz = S.heat.last.z + Math.cos(a) * r; }      // a rose: out and back through the middle
+          if (h1.state === 'search') { const a = h1.orbit * 1.7, r = 38 * Math.abs(Math.sin(h1.orbit * 0.9)); gx = spot.x + Math.sin(a) * r; gz = spot.z + Math.cos(a) * r; }      // a rose: out and back through the middle
           const k = 1 - Math.exp(-dt / CHOPPER.trail);
           disc.x += (gx - disc.x) * k; disc.z += (gz - disc.z) * k;
           const bx = disc.x - h1.x, bz = disc.z - h1.z, bl = Math.hypot(bx, bz);
@@ -256,9 +268,10 @@ export default {
       }
       g.restore();
     }
-    ev.on('game:reset', () => { for (const h of list.slice()) drop(h); setCam(false); });
+    ev.on('game:reset', () => { for (const h of list.slice()) drop(h); setCam(false); tracking = false; darkT = 0; });
+    ev.on('heat:changed', (e) => { if (e.from === 0) { spot.x = S.heat.last.x; spot.z = S.heat.last.z; darkT = 0; } });
     ev.on('heat:cleared', () => setCam(false));
-    ctx.test.chopper = () => ({ count: list.length, cam: camOn, onScene: onScene(), stats: { ...stats }, disc: { ...disc }, tag: tagDrawn, button: btn.style.display !== 'none' ? btn.textContent : '',
+    ctx.test.chopper = () => ({ count: list.length, tracking, darkT, spot: { ...spot }, cam: camOn, onScene: onScene(), stats: { ...stats }, disc: { ...disc }, tag: tagDrawn, button: btn.style.display !== 'none' ? btn.textContent : '',
       fov: cam.fov, camY: cam.position.y, calls: list.length * 2 + (discMesh.visible ? 1 : 0) + (beamMesh.visible ? 1 : 0), triangles: list.reduce((n, h) => n + h.tris + 24, 0) + (discMesh.visible ? 2 : 0) + (beamMesh.visible ? 24 : 0),
       list: list.map((h) => ({ n: h.n, x: h.x, y: h.y, z: h.z, h: h.h, state: h.state, sees: h.sees, d: h.d, speed: h.speed, t: h.t })) });
     ctx.test.chopperCam = (on) => (on === undefined ? toggle() : setCam(on));

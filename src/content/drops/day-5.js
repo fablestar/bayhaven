@@ -59,7 +59,7 @@ function createPilot(ctx) {
     g.fillStyle = '#5dff9b'; g.fillText(`Peak viewers: ${fmt(score.best)}`, 256, 214);
     tex.needsUpdate = true;
   }
-  const say = () => hud && hud.drop(pilot.running ? `${PILOT.title}, on air, ${fmt(score.live)} watching` : `${PILOT.title}, peak viewers ${fmt(score.best)}`);
+  const say = () => { pilot.label = pilot.running ? `${PILOT.title}, on air, ${fmt(score.live)} watching` : `${PILOT.title}, peak viewers ${fmt(score.best)}`; if (hud) hud.drop(pilot.label); };
   let dirty = true, wait = 0, away = true;
 
   function press() {

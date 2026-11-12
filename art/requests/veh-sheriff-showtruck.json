@@ -1,0 +1,12 @@
+{
+  "id": "veh-sheriff-showtruck",
+  "kind": "model:vehicle",
+  "replaces": "vehicle:showtruck",
+  "ask": "A county sheriff's outside-broadcast truck: a medium box truck whose box is an open stage. Low-poly toy style, big flat faces, no fine detail. White cab and stage with a teal lower half and one pink stripe, a dark video screen along each side of the stage, a small pink podium on top with room for one standing figure, a camera on a crane arm reaching over the back, a satellite dish and two loudspeakers behind the cab, a light bar on the cab roof with a pink lamp on the left and a cyan lamp on the right. No lettering, no badges, generic shape.",
+  "size": { "l": 7.5, "w": 2.4, "h": 3.9 },
+  "budget": { "tris": 4000, "bytes": 260000 },
+  "parts": ["body", "screen_l", "screen_r", "lamp_l", "lamp_r", "wheel_fl", "wheel_fr", "wheel_rl", "wheel_rr"],
+  "views": "three-quarter front, side",
+  "why": "It is the face of heat 5. The code version is boxes drawn over a pickup's chassis until the Hogfish ships (src/actors/cops-heavy-draw.js).",
+  "tier": "A", "asked": "d5-s2"
+}
