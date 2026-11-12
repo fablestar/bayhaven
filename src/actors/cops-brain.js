@@ -6,7 +6,7 @@
 // No three.js in here.
 
 export const BRAIN = { pullGap: 8, ramGap: 4, ramFor: 0.9, boxBelow: 40 / 3.6, boxOff: 50 / 3.6, stopWithin: 25, searchOut: 150, routeEvery: 1.2,
-  direct: 70, reach: 9, catchUp: 1.08, catchFrom: 60, cruise: 15, lost: 3 };
+  direct: 400, reach: 9, catchUp: 1.08, catchFrom: 30, cruise: 15, lost: 3 };
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
@@ -17,11 +17,15 @@ export function createBrain({ nav, collide, map, rnd }) {
   function aim(u, tx, tz, vd, inp) {
     const v = u.v, fx = Math.sin(v.h), fz = Math.cos(v.h), dx = tx - v.x, dz = tz - v.z;
     const fwd = dx * fx + dz * fz, lat = dx * fz - dz * fx, ang = Math.atan2(lat, fwd), a = Math.abs(ang);
-    inp.steer = clamp(ang * 1.9, -1, 1);
-    if (a > 1.3) vd = Math.min(vd, 6); else if (a > 0.7) vd = Math.min(vd, 10); else if (a > 0.35) vd = Math.min(vd, 17);
+    // right on a moving target the angle to it swings wildly: close in sideways and keep the speed
+    if (u.pursuit && dx * dx + dz * dz < 144 && v.vf > 6) inp.steer = clamp(lat * 0.3, -0.6, 0.6);
+    else {
+      inp.steer = clamp(ang * 1.9, -1, 1);
+      if (a > 1.3) vd = Math.min(vd, 6); else if (a > 0.7) vd = Math.min(vd, 10); else if (a > 0.35) vd = Math.min(vd, 17);
+    }
     inp.gas = v.vf < vd ? 1 : 0;
     inp.brake = v.vf > vd + 1.5 && v.vf > 0.4 ? clamp((v.vf - vd) / 6, 0.25, 1) : 0;      // (a brake held at a standstill is reverse)
-    inp.handbrake = a > 1.1 && v.vf > 11;
+    inp.handbrake = a > 1.1 && v.vf > 11 && !(u.pursuit && dx * dx + dz * dz < 144);
     return ang;
   }
   // the next point to drive at: straight there if the line is clear, else along the lanes
@@ -100,9 +104,10 @@ export function createBrain({ nav, collide, map, rnd }) {
         vd = p.speed * 1.1 + clamp((dist - 7) * 0.6, -3, 14);
         if (dist < 7 && W.level < 2) vd = Math.max(0, p.speed - 2);
       }
-      // more than 60 m behind: allowed 1.08 times the player's speed, whatever its own engine says
+      // more than 30 m behind (the bible says 60; a coupe on a straight was gone before that): allowed 1.08 times the player's speed, whatever its own engine says
       if (dist > BRAIN.catchFrom && state !== 'stop') { vd = Math.max(vd, p.speed * BRAIN.catchUp + 6, 22); u.boost = Math.min(p.top * 1.15, p.speed * BRAIN.catchUp); } else u.boost = 0;
     }
+    u.pursuit = state === 'chase' || state === 'ram' || state === 'box' || state === 'pullover' || state === 'cutoff';
     const at = path(u, tx, tz, time);
     if (u.corner) vd = Math.min(vd, 12);
     const ang = aim(u, at.x, at.z, vd, inp);

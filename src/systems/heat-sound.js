@@ -39,7 +39,7 @@ export function createHeatSound(ctx) {
   function fill(text) {
     const p = S.player, car = m.vehicles && m.vehicles.player, onFoot = p.mode === 'foot';
     const road = m.map.nearestRoad ? m.map.nearestRoad(p.x, p.z) : null, zone = m.map.zoneAt ? m.map.zoneAt(p.x, p.z) : null;
-    const model = car && m.vehicles.models && m.vehicles.models[car.model], name = (model && model.name) || (car ? car.model : 'car');
+    const model = car && m.vehicles.models && m.vehicles.models[car.model], name = (model && model.name) || (car ? car.model[0].toUpperCase() + car.model.slice(1) : 'car');
     const hd = HEADINGS[((Math.round(Math.atan2(Math.sin(p.h), Math.cos(p.h)) / (Math.PI / 2)) % 4) + 4) % 4];
     let out = text;
     if (onFoot) out = out.replace(/(the|a|an) \{vehicle\}/gi, 'suspect on foot');

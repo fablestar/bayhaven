@@ -29,7 +29,7 @@ export default {
       const p = S.player, car = m.vehicles && m.vehicles.player, model = car && m.vehicles.models && m.vehicles.models[car.model];
       const road = m.map && m.map.nearestRoad ? m.map.nearestRoad(p.x, p.z) : null, zone = m.map && m.map.zoneAt ? m.map.zoneAt(p.x, p.z) : null;
       const n = (v) => Math.round(v || 0).toLocaleString('en-US');
-      return text.replace(/\{vehicle\}/g, (model && model.name) || (car ? car.model : 'car')).replace(/\{street\}/g, (road && road.name) || 'the beachfront')
+      return text.replace(/\{vehicle\}/g, (model && model.name) || (car ? car.model[0].toUpperCase() + car.model.slice(1) : 'car')).replace(/\{street\}/g, (road && road.name) || 'the beachfront')
         .replace(/\{district\}/g, (zone && zone.name) || 'Bayhaven').replace(/\{score\}/g, n(data.score)).replace(/\{metres\}/g, n(data.metres)).replace(/\{distance\}/g, n(data.metres))
         .replace(/\{viewers\}/g, n(S.heat.peak || S.heat.viewers));
     }

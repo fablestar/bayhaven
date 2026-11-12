@@ -85,7 +85,6 @@ export default {
     // ---- sight ----
     function unitSees(u, x, z, range) {
       const v = u.v, d = u.deputy;
-      if (u.state === 'leave') return false;
       if (d.out) { const r = Math.hypot(x - d.x, z - d.z); if (r < range && (r < 3 || brain.clearLine(d.x, d.z, x, z))) return true; }
       const dx = x - v.x, dz = z - v.z, r = Math.hypot(dx, dz);
       if (r > range) return false;
@@ -196,8 +195,10 @@ export default {
       stage(n = 3) {
         const p = S.player, fx = Math.sin(p.h), fz = Math.cos(p.h), lx = fz, lz = -fx;
         for (const u of units.slice()) remove(u);
+        // one close behind, one coming the other way up the next lane, the rest behind on alternate sides
         for (let i = 0; i < n; i++) {
-          const back = 16 + i * 11, side = (i % 2 ? -1 : 1) * (i === 0 ? 0 : 2.6);
+          if (i === 1) { add(p.x + fx * 150 + lx * 3.4, p.z + fz * 150 + lz * 3.4, p.h + Math.PI, 0); continue; }
+          const back = 10 + i * 5, side = i === 0 ? 0 : (i % 4 === 2 ? -3 : 3);
           add(p.x - fx * back + lx * side, p.z - fz * back + lz * side, p.h, Math.abs(p.kmh || 0) / 3.6);
         }
         staged = n;

@@ -183,7 +183,7 @@ export default {
       h.viewers = clip.viewers || ENTRY[clip.heat] * 4; h.peak = h.viewers; setSeen(true);
       if (m.cops && m.cops.stage) m.cops.stage(clip.cops || 3);
     }
-    if (ctx.test.clip) { const play = ctx.test.clip.play; ctx.test.clip.play = (id) => { clipId = id; return play(id); }; }
+    ev.once('game:ready', () => { if (ctx.test.clip) { const play = ctx.test.clip.play; ctx.test.clip.play = (id) => { clipId = id; return play(id); }; } });
 
     const api = {
       get level() { return h.level; }, set: (n) => setLevel(n, 'set'), clear: () => clear('set'), addPoints, crime, witnessed, book, hidden, drop, stunt,
