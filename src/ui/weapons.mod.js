@@ -12,7 +12,7 @@ const CSS = `
 #combat-ui { position: fixed; right: calc(24px + var(--sr, 0px)); bottom: calc(118px + var(--sb, 0px)); display: none; flex-direction: column; gap: 6px; align-items: stretch;
   font-family: ${FONT}; z-index: 6; user-select: none; -webkit-user-select: none; }
 body.on-foot #combat-ui { display: flex; }
-body.clip #combat-ui, body.menu-open #combat-ui, body.clip #combat-touch { display: none; }
+body.clip #combat-ui, body.menu-open #combat-ui, body.knocked-out #combat-ui, body.clip #combat-touch, body.knocked-out #combat-touch { display: none; }
 #quickbar { display: flex; gap: 6px; }
 #quickbar .qslot { min-width: 84px; height: 44px; box-sizing: border-box; padding: 3px 10px; border-radius: 22px; border: 2px solid transparent; background: rgba(21, 15, 61, .55);
   color: #fff; font: 700 14px ${FONT}; text-align: left; line-height: 17px; cursor: pointer; touch-action: none; }
@@ -39,7 +39,7 @@ body.clip #combat-ui, body.menu-open #combat-ui, body.clip #combat-touch { displ
 #touch-lock { right: calc(184px + var(--sr, 0px)); bottom: calc(18px + var(--sb, 0px)); }
 #hurt-flash { position: fixed; inset: 0; pointer-events: none; box-shadow: inset 0 0 120px 30px rgba(255, 79, 168, .75); opacity: 0; transition: opacity .5s; z-index: 5; }
 #hurt-flash.on { opacity: 1; transition: none; }
-#game.ko { filter: grayscale(1) contrast(.92); transform: rotate(12deg) scale(1.32); transition: filter .6s, transform .6s; }
+#game.ko { filter: grayscale(1) contrast(.92); transform: rotate(12deg) scale(1.5); transition: filter .6s, transform .6s; }
 #game.ko.flat { transform: none; }
 #knockedout { position: fixed; inset: 0; display: none; z-index: 40; overflow: hidden; }
 #knockedout.open { display: block; }
@@ -134,13 +134,13 @@ export default {
       K.data = { name: d.lead === 'mags' ? 'Mags' : 'Navarro, Teo', bill: d.bill || 0, seed: Math.round((d.x || 0) * 31 + (d.z || 0) * 17 + (d.bill || 0)) };
       drawBand(band.getContext('2d'), K.data);
       if (game) { game.classList.add('ko'); game.classList.toggle('flat', calm); }
-      ko.className = 'open';
+      ko.className = 'open'; document.body.classList.add('knocked-out');
       later(calm ? 100 : 900, () => ko.classList.add('in'));
     }
     function hide(quiet) {
       for (const t of K.timers) clearTimeout(t); K.timers.length = 0;
       if (!K.open) return;
-      K.open = false; ko.className = '';
+      K.open = false; ko.className = ''; document.body.classList.remove('knocked-out');
       if (game) game.classList.remove('ko', 'flat');
       if (!quiet) { white.classList.add('on'); void white.offsetWidth; white.classList.remove('on'); }       // a 600 ms fade from white
     }

@@ -61,7 +61,10 @@ export function createGuards(env) {
       const sn = Math.sin(v.h), cs = Math.cos(v.h), rx = body.x - v.x, rz = body.z - v.z, f = rx * sn + rz * cs, l = rx * cs - rz * sn;
       const pf = v.hl + 0.35 - Math.abs(f), pl = v.hw + 0.35 - Math.abs(l);
       if (pf <= 0 || pl <= 0) continue;
-      if (pl < pf) { const s = (l >= 0 ? 1 : -1) * pl; body.x += cs * s; body.z -= sn * s; } else { const s = (f >= 0 ? 1 : -1) * pf; body.x += sn * s; body.z += cs * s; }
+      // pushed out of its side, he slides along it: towards the goal, or round the end both are nearer to when the goal is on the far side
+      const gx = x - v.x, gz = z - v.z, gf = gx * sn + gz * cs, gl = gx * cs - gz * sn, slide = speed * dt;
+      if (pl < pf) { const s = (l >= 0 ? 1 : -1) * pl, t = (gl * l < 0 ? (f + gf >= 0 ? 1 : -1) : Math.sign(gf - f)) * slide; body.x += cs * s + sn * t; body.z += -sn * s + cs * t; }
+      else { const s = (f >= 0 ? 1 : -1) * pf, t = (gf * f < 0 ? (l + gl >= 0 ? 1 : -1) : Math.sign(gl - l)) * slide; body.x += sn * s + cs * t; body.z += cs * s - sn * t; }
     }
     g.x = body.x; g.z = body.z; g.h = Math.atan2(dx, dz); g.phase += speed * dt * 3.2; g.pose = 'run';
     return d <= speed * dt + 0.05;

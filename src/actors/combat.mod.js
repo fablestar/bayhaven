@@ -166,7 +166,7 @@ export default {
     }
     function shootGun(w) {
       const b = me(), a0 = lock ? Math.atan2(lock.x - P.x, lock.z - P.z) : m.camera ? m.camera.yaw : b.h, tally = new Map();
-      b.h = a0; raiseT = 0.5; mag[w.id]--; stats.fired++; cool = w.every;
+      b.h = a0; raiseT = 0.5; mag[w.id]--; stats.fired++; cool = Math.max(cool, -1 / 60) + w.every;       // what the last step overshot is carried, so the rate is exact
       if (w.lob) flares.fire(P.x + Math.sin(a0) * 0.5, b.y + 1.4, P.z + Math.cos(a0) * 0.5, a0, w);
       else if (w.pellets) for (let i = 0; i < w.pellets; i++) round(a0 + ((i + 0.5) / w.pellets - 0.5) * w.cone * RAD, w, (d) => damageAt(w.id, d) / w.pellets, tally);
       else {
@@ -281,7 +281,7 @@ export default {
       spawn: (x, z, h, o) => guards.add(x, z, h, o), get lock() { return lock; }, scores, reload, people: () => people };
     const T = ctx.test, info = guards.info;
     T.guards = () => guards.list.map(info);
-    T.combat = () => ({ slot: C.slot, weapon: C.weapon, ammo: C.ammo, spare: C.spare, lock: C.lock, reloading: C.reloading, inv: { ...inv }, cool, stats: { ...stats }, guardStats: { ...guards.stats }, flares: { ...flares.stats, flying: flares.flares.length },
+    T.combat = () => (sync(), { slot: C.slot, weapon: C.weapon, ammo: C.ammo, spare: C.spare, lock: C.lock, reloading: C.reloading, inv: { ...inv }, cool, stats: { ...stats }, guardStats: { ...guards.stats }, flares: { ...flares.stats, flying: flares.flares.length },
       crates: flares.crates.map((c) => ({ x: c.x, z: c.z, going: c.going > 0, spent: c.spent })), pickups: pickups.map((p) => ({ id: p.id, x: p.x, z: p.z, ready: p.ready, gives: p.gives })), drops: drops.length, boxes: draw.boxes, triangles: draw.triangles, sounds: { ...sound.stats } });
     Object.assign(T.combat, {
       give, select, cycle, damageAt, crate: (x, z) => { const c = flares.crate(x, z); return { x: c.x, z: c.z }; }, place: () => { if (!placed) place(); return pickups.length; },
