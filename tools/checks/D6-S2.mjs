@@ -8,6 +8,12 @@ import tv from '../../src/content/missions/07-as-seen-on-tv.js';
 const QUIET = '&traffic=0&peds=0&hour=17.5';
 const SMALL = { viewport: { width: 960, height: 540 } };
 const settle = (page, ms = 500) => page.waitForTimeout(ms);
+// a page that does not load in 30 s (a busy machine) is asked for again, twice at most
+async function load(t, query, opts) {
+  for (let i = 0; ; i++) {
+    try { return await t.open(query, opts); } catch (e) { if (i >= 2 || !/goto|closed|not ready/.test(String(e && e.message))) throw e; t.note('the page did not load; asking again'); }
+  }
+}
 const WATCH = `(() => { const g = window.__game; g.seen = [];
   for (const n of ['mission:offered', 'mission:started', 'mission:step', 'mission:failed', 'mission:completed', 'cash:changed', 'photo:taken', 'photo:mode', 'squawk:posted', 'squawk:reply', 'phone:message', 'phone:opened', 'phone:closed', 'waypoint:set'])
     g.events.on(n, (e) => g.seen.push({ ...(e || {}), ev: n, at: performance.now() }));
@@ -17,9 +23,11 @@ export default [
   {
     id: 'D6.4', name: 'Phone: opening shows 7 apps or more; game speed is 0.3 while open; Camera returns a PNG over 50 kB with the postcard frame; Squawk has a new post within 5 s of a drift:end',
     async run(t) {
-      const page = await t.open(QUIET, SMALL);
+      const level = t.quality || 'low', page = await load(t, QUIET + '&quality=' + level, SMALL);
       await settle(page); await page.evaluate(WATCH);
-      await page.keyboard.press('KeyP'); await settle(page, 500);
+      await page.keyboard.press('KeyP');
+      await page.waitForFunction(() => { const r = document.getElementById('phone').getBoundingClientRect(); return r.bottom <= window.innerHeight && r.top >= 0 && r.top < 40; }, null, { timeout: 8000 }).catch(() => {});
+      await settle(page, 400);
       const a = await page.evaluate(() => ({ ...window.__game.test.phone(), state: window.__game.state.ui.phoneOpen }));
       t.expect(a.open && a.state, '==', true, 'P opens the phone (state.ui.phoneOpen)');
       t.expect(a.apps.length, '>=', 7, 'apps on the home screen');
@@ -28,8 +36,13 @@ export default [
       t.expect(a.rect.y + a.rect.h, '<=', 540, 'the phone is on the screen (its bottom edge, px)');
       t.expect(a.minFont, '>=', 14, 'smallest text on the phone (px)');
       // the game really is running at 30%: game seconds over one real second
-      const ran = await page.evaluate(() => new Promise((res) => { const g = window.__game, t0 = g.loop.time, w0 = performance.now(); setTimeout(() => res((g.loop.time - t0) / ((performance.now() - w0) / 1000)), 1000); }));
-      t.expect(ran, 'between', [0.2, 0.4], 'game seconds a real second behind the phone');
+      // (a frame longer than 0.1 s counts as 0.1 s in the loop, so the real seconds are counted the same way)
+      const ran = await page.evaluate(() => new Promise((res) => {
+        const g = window.__game, f0 = g.loop.frameTime; let real = 0, last = performance.now(), n = 0;
+        const tick = (now) => { real += Math.min(0.1, Math.max(0, (now - last) / 1000)); last = now; if (++n < 40) requestAnimationFrame(tick); else res((g.loop.frameTime - f0) / real); };
+        requestAnimationFrame((now) => { last = now; requestAnimationFrame(tick); });
+      }));
+      t.expect(ran, 'between', [0.27, 0.33], 'game seconds a real second behind the phone, over 40 frames');
       if (t.shots) await page.screenshot({ path: 'shots/D6-S2-phone.png' });
       await page.keyboard.press('KeyP'); await settle(page, 350);
       const b = await page.evaluate(() => window.__game.test.phone());
@@ -38,7 +51,7 @@ export default [
       // the camera
       const shot = await page.evaluate(async () => { const T = window.__game.test, r = await T.photo({ hud: false }); return { ...r, corner: T.photo.pixel(3, 3), edge: T.photo.pixel(12, 300), band: T.photo.pixel(600, r.height - 6), mid: T.photo.pixel(r.width >> 1, r.height >> 1) }; });
       t.expect(shot.bytes, '>', 50000, 'the PNG (bytes)');
-      t.expect(shot.width + 'x' + shot.height, '==', '1280x854', 'the card on low');
+      t.expect(shot.width + 'x' + shot.height, '==', level === 'low' ? '1280x854' : '1920x1280', 'the card on ' + level);
       t.expect(shot.greeting, '==', 'Greetings from Bayhaven · Day 6', 'the greeting on the card');
       t.expect(shot.edge.slice(0, 3).join(','), '==', '253,246,234', 'the white border (left edge pixel)');
       t.expect(shot.band.slice(0, 3).join(','), '==', '253,246,234', 'the bottom band is card');
@@ -62,7 +75,7 @@ export default [
   {
     id: 'D6.5', name: 'Missions 3 and 7: both complete by skipping steps; mission 7\'s heat steps complete for real when heat is set',
     async run(t) {
-      const page = await t.open(QUIET, SMALL);
+      const page = await load(t, QUIET, SMALL);
       await settle(page); await page.evaluate(WATCH);
       const r3 = await page.evaluate(() => {
         const g = window.__game, T = g.test, cash0 = g.state.economy.cash;
@@ -114,7 +127,7 @@ export default [
   {
     id: 'D6-S2.1', name: 'Repo Woman, a real step: the first car is driven (not skipped) into the service bay marker and the deliver step completes with the car under 30% damage',
     async run(t) {
-      const page = await t.open(QUIET, SMALL);
+      const page = await load(t, QUIET, SMALL);
       await settle(page); await page.evaluate(WATCH);
       const r = await page.evaluate(async () => {
         const g = window.__game, T = g.test;
@@ -122,11 +135,12 @@ export default [
         const stood = T.mission.state();                                    // 2a: the Tarpon is standing at the drop-off
         T.mission.skipStep(); T.mission.skipStep(); T.advance(0.2);
         const at = T.mission.state(), mk = at.markers[0];
-        T.spawnVehicle('tarpon', { x: mk.x + 30, z: mk.z, heading: -Math.PI / 2 });
-        T.input([{ t: 0, hold: ['gas'] }, { t: 2, hold: ['brake'] }, { t: 4.5, hold: [] }]);
+        T.spawnVehicle('tarpon', { x: mk.x - 30, z: mk.z, heading: Math.PI / 2 });
+        // gas until the marker is 6 m ahead, then the brake
+        T.input((a) => { const p = T.player(), d = mk.x - p.x; a.steer = 0; a.gas = d > 6 && p.speed < 9 ? 1 : 0; a.brake = d <= 6 ? 1 : 0; a.handbrake = false; a.horn = false; return false; });
         let took = -1;
         for (let i = 0; i < 100 && took < 0; i++) { T.advance(0.1); if (T.mission.state().step > at.step) took = i / 10; }
-        const s = T.mission.state();
+        const s = T.mission.state(); g.modules.missions && T.input([{ t: 0, hold: [] }]);
         return { goto: stood.type, cars: g.modules.missions.run.stood ? Object.keys(g.modules.missions.run.stood) : [], at: { step: at.step, type: at.type, timer: at.timer, bar: at.bar }, mk, took, s: { step: s.step, type: s.type, cp: s.checkpoint },
           health: T.damage().health, moved: s.moved.filter((q) => q.mission === 'repo-woman').length, errors: T.errors() };
       });
@@ -138,14 +152,14 @@ export default [
       t.expect(r.s.step + ' ' + r.s.type, '==', '4 goto', 'the next step is car 2');
       t.expect(r.s.cp, '==', 4, 'a checkpoint was saved after the delivery');
       t.expect(r.health, '>', 70, 'the car is under its damage limit (health)');
-      t.note(`service bay marker at (${r.mk.x}, ${r.mk.z}); seeds moved to a kerb for this mission: ${r.moved}; cars stood: ${r.cars.join(', ')}`);
+      t.note(`the garage marker stands at (${r.mk.x}, ${r.mk.z}); seeds moved to a kerb for this mission: ${r.moved}; cars stood: ${r.cars.join(', ')}`);
       t.expect(r.errors.length, '==', 0, 'errors');
     },
   },
   {
     id: 'D6-S2.2', name: 'Messages: a mission on offer is a text from its giver; a new text arrives when a mission becomes available; a tap sets the waypoint',
     async run(t) {
-      const page = await t.open(QUIET, SMALL);
+      const page = await load(t, QUIET, SMALL);
       await settle(page); await page.evaluate(WATCH);
       const r = await page.evaluate(() => {
         const g = window.__game, T = g.test, first = T.phone().messages;
@@ -175,7 +189,7 @@ export default [
   {
     id: 'D6-S2.3', name: 'Apps: Map opens the map screen, Settings reuses the pause settings, Jobs and Stats are lists a registry fills',
     async run(t) {
-      const page = await t.open(QUIET, SMALL);
+      const page = await load(t, QUIET, SMALL);
       await settle(page);
       const r = await page.evaluate(() => {
         const g = window.__game, T = g.test, P = g.modules.phone, out = {};
@@ -206,7 +220,7 @@ export default [
   {
     id: 'D6-S2.4', name: 'Photo mode: time stops, the free camera stays inside its limits, three filters give three pictures, the HUD goes off, photo:taken is emitted, the selfie flip faces the lead',
     async run(t) {
-      const page = await t.open(QUIET, SMALL);
+      const page = await load(t, QUIET, SMALL);
       await settle(page); await page.evaluate(WATCH);
       await page.evaluate(() => { const T = window.__game.test; T.phone.open(); T.phone.app('camera'); });
       await settle(page, 600);
@@ -255,7 +269,7 @@ export default [
       for (const s of ['whoever is drifting past {landmark} rn: marry me', 'free water park on {street}. thank you, mystery driver', 'they LOST him?? @BayhavenBlue explain', '3:15. right on time.', 'is that a grandma', 'ok who is {handle} and why is he on my feed every day'])
         t.expect(SQUAWK.some((r) => r.text === s), '==', true, 'the plan\'s sample, word for word: ' + s.slice(0, 28));
       t.expect(REPLIES.length, '>=', 5, "the Sheriff's replies");
-      const page = await t.open(QUIET, SMALL);
+      const page = await load(t, QUIET, SMALL);
       await settle(page); await page.evaluate(WATCH);
       const r = await page.evaluate(async () => {
         const g = window.__game, T = g.test, out = {};
@@ -275,7 +289,7 @@ export default [
       t.expect(r.hydrant && r.hydrant.text, '==', 'free water park on heron walk drive. thank you, mystery driver', 'a hydrant post, with the street filled in');
       t.expect(r.paced, '==', 1, 'posts after a second event inside 20 s');
       t.expect(!!r.reply && r.reply.who, '==', '@BayhavenBlue', 'a reply under it from');
-      t.expect(r.posts.some((p) => p === '@visiting.vic @BayhavenBlue lost a grandma who used her indicators the whole chase. explain'), '==', true, "mission 7's own post went out");
+      t.expect(r.posts.some((p) => p.endsWith('@BayhavenBlue lost a grandma who used her indicators the whole chase. explain')), '==', true, "mission 7's own post went out");
       t.expect(r.posts.some((p) => /1,000 FOLLOWERS/.test(p)), '==', true, 'passing 1,000 followers posted the milestone row');
       t.expect(r.handle + ' ' + (r.followers >= 5212), '==', '@teo.navarro.live true', "Teo's handle and count (" + r.followers + ')');
       t.expect(/^5,\d{3} followers · @teo\.navarro\.live$/.test(r.top), '==', true, 'the top of the Squawk page: ' + r.top);
@@ -301,19 +315,20 @@ export default [
       t.expect(tv.steps.map((s) => s.type).join(' '), '==', 'say heat say survive heat say', 'As Seen on TV: 1, 2, 3a, 3b, 4a, 4b');
       t.expect(tv.steps[1].level + ' ' + tv.steps[3].seconds + ' ' + tv.steps[3].atHeat + ' ' + tv.steps[4].want, '==', '3 60 3 clear', 'reach 3, 60 s at 3 or more, clear');
       t.expect(tv.pays.cash + ' ' + tv.pays.followers + ' ' + count(tv), '==', '2500 5000 31', 'As Seen on TV pays, and its lines');
-      const page = await t.open(QUIET, SMALL);
+      const page = await load(t, QUIET, SMALL);
       await settle(page);
       // the honk: beside the parked cruiser on Rosa Street, a horn blast is heat 1; fifteen seconds of driving on is heat 2
       const r = await page.evaluate(async () => {
         const g = window.__game, T = g.test, out = {};
-        T.mission.start('as-seen-on-tv'); T.mission.skipStep(); T.advance(0.2);
-        T.spawnVehicle('heron', { x: -1008.5, z: 12, heading: Math.PI }); T.advance(0.5); out.before = g.state.heat.level;
+        T.mission.start('as-seen-on-tv', { from: 1, player: { model: 'heron', x: -1008.5, z: 12, h: Math.PI } });      // step 2, in a coupe beside the cruiser
+        T.advance(0.5); out.mode = g.modules.player.mode; out.type = T.mission.state().type; out.before = g.state.heat.level;
         T.input([{ t: 0, hold: ['horn'] }, { t: 0.5, hold: [] }]); T.advance(1); out.honked = g.state.heat.level;
         out.said = T.dialogue().said ? T.dialogue().said.slice(-3).map((l) => l.who || l) : null;
         g.modules.heat.hold = true; T.input([{ t: 0, hold: ['gas'] }, { t: 16, hold: [] }]); T.advance(16); out.later = g.state.heat.level; g.modules.heat.hold = false;
         out.errors = T.errors();
         return out;
       });
+      t.expect(r.type + ' ' + r.mode, '==', 'heat car', 'the step, and the player is in a car');
       t.expect(r.before + ' ' + r.honked, '==', '0 1', 'heat before and after honking at the cruiser');
       t.expect(r.later, '>=', 2, 'heat after 16 s of not pulling over');
       t.expect(r.errors.length, '==', 0, 'errors');

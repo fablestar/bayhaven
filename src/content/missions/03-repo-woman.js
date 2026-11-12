@@ -2,7 +2,9 @@
 // Steps 2a to 2c are the plan's step 2, 3a to 3c its step 3, 4a to 4d its step 4; its step 5 is the result card.
 // 4d is one step more than the bible's ten: the closing lines at the forecourt need a step of their own to play out.
 // Not built yet: Chad's pistol and his side rams (he drives the same road at speed), the Mullet's falling yard signs.
-const GARAGE = { x: 332, z: -236 }, LOANER = { model: 'snook', at: { x: 352, z: -222, h: Math.PI / 2 }, paint: 0xf4f4f4 };
+// The service bay (332, -236) cannot be driven into until Park & Sons has its own lot, so the cars come to the
+// forecourt seed (340, -222), which the engine moves to the kerb in front of the garage, as it does for mission 1.
+const GARAGE = { x: 340, z: -222 }, LOANER = { model: 'snook', at: { x: 352, z: -222, h: Math.PI / 2 }, paint: 0xf4f4f4 };
 
 export default {
   id: 'repo-woman', n: 3, title: 'Repo Woman', tier: 'A', chapter: 1, act: 1,
@@ -20,14 +22,14 @@ export default {
       cars: [{ model: 'tarpon', at: { x: 300, z: 24, h: Math.PI / 2 }, paint: 0xc8ccd2, accent: 0x29e6ff }] },
     { type: 'enter', vehicle: 'tarpon', text: 'Get in the Tarpon.', hint: 'Walk to the door. One button gets you in.' },
     { type: 'deliver', what: 'tarpon', to: GARAGE, r: 7, maxDamage: 30, timer: 150, say: 'car1', done: 'car1done',
-      text: "Bring the Tarpon to Park & Sons' service bay.", hint: 'Dents cost money. Brake early.',
+      text: 'Bring the Tarpon to Park & Sons.', hint: 'Dents cost money. Brake early.',
       fail: [{ when: 'timer', text: 'Too slow. The valet called it in.' }], checkpoint: true },
 
     { type: 'goto', at: { x: -892, z: -397 }, r: 6, route: true, say: 'car2', text: 'Find the Mullet in the alley off Flamingo Avenue.', hint: 'The loaner is on the forecourt.',
       cars: [LOANER, { model: 'mullet', at: { x: -892, z: -397, h: 0 }, paint: 0x6f8f5a }] },
     { type: 'enter', vehicle: 'mullet', say: 'dog', text: 'Take the Mullet. A dog is barking. It knows.' },
     { type: 'deliver', what: 'mullet', to: GARAGE, r: 7, maxDamage: 30, timer: 180, say: 'car2drive', done: 'car2done',
-      text: 'Bring the Mullet to the service bay.',
+      text: 'Bring the Mullet to Park & Sons.',
       fail: [{ when: 'timer', text: 'Too slow. The dog told everyone.' }], checkpoint: true },
 
     { type: 'goto', at: { x: 70, z: -850 }, r: 6, route: true, say: 'car3', text: 'Find the orange Wahoo at the Spire drop-off.',

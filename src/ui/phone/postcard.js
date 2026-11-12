@@ -56,7 +56,7 @@ function rounded(g, x, y, w, h, r) {
 // photo: a canvas of the photo-area size. Returns the card canvas.
 export function frameCard(photo, size, { day, district, time }) {
   const c = document.createElement('canvas'); c.width = size.W; c.height = size.H;
-  const g = c.getContext('2d'), band = size.band, top = size.H - band;
+  const g = c.getContext('2d', { willReadFrequently: true }), band = size.band, top = size.H - band;
   rounded(g, 0, 0, size.W, size.H, Math.min(size.W, size.H) * 0.015); g.fillStyle = '#fdf6ea'; g.fill();
   g.drawImage(photo, size.px, size.py, size.pw, size.ph);
   // bottom left: the greeting, pink over a cyan copy, as the wordmark is
