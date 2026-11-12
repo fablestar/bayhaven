@@ -8,7 +8,29 @@ Built from the notes in `changelog/` by `tools/changelog.mjs`. Newest day first.
 
 **Shipped**
 
-(being written)
+- **The mission engine.** Missions are data files in `src/content/missions/`; the engine finds them by itself. All fifteen step types of the plan are in: say, cutscene, goto, enter, follow, chase, deliver, collect, photo, heat, survive, timer, defeat, switch, choice. Checkpoints, a fail list (car destroyed, target got away, target reached somewhere, time up, knocked out) and retry from the last checkpoint with the car repaired and the scripted vehicles back in place.
+- **Markers.** A pink ring and beam where to go, a pink pointer over a vehicle to chase, a cyan ring where a mission is on offer; the same as blips on the minimap, and road chevrons to the last marker.
+- **The objective line** on the HUD, a timer and a bar when a step needs them (`Hook 1/3`).
+- **Dialogue.** Subtitles with a small portrait drawn in code and a speech blip per character: Mags low and dry at 180 Hz, Teo quick at 260 Hz, Marco at 140 Hz through a loudhailer.
+- **The result card.** A postcard: a snapshot of the last frame in a white border, the mission's name in pink over cyan, time, cash and followers, a caption, Gerald on the postage stamp, and a rubber stamp that lands with a thud and confetti: `Delivered`. A failed mission gets the same card in grey, stamped `Return to sender` in ink, with `Retry`. It is never a banner.
+- **Mission 1, "Final Notice".** All six steps and all 40 lines of the script. The tow truck is a yellow Mullet with a boom, a flashing amber light and Teo's scooter hanging off a hook. It leaves the gate, takes Whimbrel Street to the beach road and holds 70 km/h through the lights. Ram its tail three times at 15 km/h or more and the scooter comes off, slides to the kerb, and Teo rides it home while Mags drives to Park & Sons. Pays $500, once.
+- **Start markers and events:** `mission:offered`, `started`, `step`, `failed`, `completed` (and `ram`, `retried`, `ended`, `stamped`).
+- **Test API:** `test.mission.start`, `skipStep`, `state` (and `fail`, `retry`, `replay`, `dismiss`), `test.dialogue()`, `test.missionUi()`, `test.cup()`.
+- **The day's drop, "The Getaway Cup"** (day 6 build only): mission 1 against the clock from a mango ring by the Pelican Rest gate, with a see-through cyan ghost of your best run.
+- **The clip** (`?clip=day-6`): golden hour at the plaza, the third ram for real at about 40 km/h, the scooter slides to the kerb, cut to the postcard, the stamp lands.
+- **Finished early list:** a `Replay` button on the card; the tow truck's hook swings (a damped pendulum pushed by turns and by every ram).
+
+**Not shipped**
+
+- **The cutscene is a stub**, as the prompt asked: the opening's seven lines play as dialogue under two bars and one tap skips it. No camera moves, no notice going up, no Gerald.
+- **Photo and switch are stubs**, as asked: standing at the spot is the photo; switch records the lead and moves on. `goto` does not read `stealth` (guards' view cones are day 7).
+- **Mags is not in it.** The player module only has Teo's body, so he drives her coupe. Nobody sits in the passenger seat, and Teo is not seen getting on the scooter: it just rides off with a rider on it after six seconds.
+- **Mission 1 does not start by itself.** There is no new-game flow yet, so it is on offer at Pelican Rest (a cyan ring, 1.2 km west of where you appear) or by `?mission=final-notice`. The start marker was not driven into by a check; I started missions through the test API.
+- **Pelican Rest and Park & Sons are not built.** Lot 9 is bare ground. The forecourt seed (340, -222) is inside an ordinary building today, so the engine moves that marker to the kerb in front of it, (340, -201.5), and will use the seed again when the garage has its own lot. The bible's "real step" check drives along a line that is inside that building; my D6.3 drives the same 40 m to wherever the marker stands.
+- **The chase step was not driven end to end by a check.** The truck's route was watched (it turns at the beach road and the "250 m ahead" fail fires for real); the rams, the last drive and the clip are driven for real; catching the truck from the carport was only skipped.
+- **The truck "runs two lights"** only in the sense that it is on rails and ignores them; the line about the red light plays when it passes Rosa Street whatever the light shows.
+- **No Squawk post or radio line** for the mission: the text is in the mission file (`react`), nothing reads it yet.
+- **No art requests** were made. A Remora tow truck model would beat the dressed-up Mullet.
 
 ## Day 5: Heat
 
