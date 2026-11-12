@@ -124,6 +124,8 @@ export function createMap() {
   }
 
   const zoneAt = (x, z) => { for (const zn of zones) if (inRect(zn.bounds, x, z)) return zn; return null; };
+  // a port zone may carry `quay: { x1, z1 }`: flat land out to that edge, even south of the beach line, and deep water past it
+  const quayAt = (x, z) => { const zn = zoneAt(x, z); return zn && zn.quay ? (x <= zn.quay.x1 && z <= zn.quay.z1 ? 1 : -1) : 0; };
   function blockAt(x, z) {
     const zn = zoneAt(x, z);
     if (!zn) return null;
@@ -155,7 +157,7 @@ export function createMap() {
 
   const map = {
     chunk: CHUNK, world: WORLD, zones, pieces, nodes, blocks, lots, snapFailures: [],
-    bounds: { x0: -1593, x1: 1593, z0: zones.reduce((m, z) => Math.min(m, z.bounds.z0), -320) + 6, z1: 84.5 },       // where the player can go today
+    bounds: { x0: zones.reduce((m, z) => Math.min(m, z.bounds.x0), 0) + 7, x1: zones.reduce((m, z) => Math.max(m, z.bounds.x1), 0) - 7, z0: zones.reduce((m, z) => Math.min(m, z.bounds.z0), -320) + 6, z1: 84.5 },       // where the player can go today
     spawn: { x: -24, z: 40.5, h: Math.PI / 2 },
     chunkOf: (x, z) => ({ cx: chunkX(x), cz: chunkZ(z) }),
     chunkRect: (cx, cz) => ({ x0: WORLD.x0 + cx * CHUNK, x1: WORLD.x0 + (cx + 1) * CHUNK, z0: WORLD.z0 + cz * CHUNK, z1: WORLD.z0 + (cz + 1) * CHUNK }),
@@ -165,10 +167,13 @@ export function createMap() {
     zoneAt,
     districtAt: (x, z) => { const zn = zoneAt(x, z); return zn ? zn.id : null; },
     neighbourhoodAt(x, z) { const zn = zoneAt(x, z), h = zn && zn.hoods.find((hd) => x >= hd.x0 && x < hd.x1 && (hd.z0 === undefined || (z >= hd.z0 && z < hd.z1))); return h ? h.id : null; },
-    isLand: (x, z) => inRect(WORLD, x, z) && z <= SHORE,
-    depthAt: (x, z) => (z > SHORE ? Math.max(0, -map.heightAt(x, z)) : 0),
+    isLand: (x, z) => { const q = quayAt(x, z); return q ? q > 0 : inRect(WORLD, x, z) && z <= SHORE; },
+    depthAt: (x, z) => (map.isLand(x, z) ? 0 : Math.max(0, -map.heightAt(x, z))),
     // ground height: kerbs, the promenade, the beach sloping under the sea. level is for decks, later.
     heightAt(x, z) {
+      const q = quayAt(x, z);
+      if (q < 0) return -6;
+      if (q > 0 && z >= 44) return 0;
       if (z > 72) return 0.02 - (z - 72) / 28;
       if (z > 50) return 0.02;
       if (z >= 44) return onPromenade(x, z) ? CURB : 0;
@@ -177,6 +182,8 @@ export function createMap() {
       return zn && zn.plazas && zn.plazas.some((r) => inRect(r, x, z)) ? CURB : 0;
     },
     surfaceAt(x, z) {
+      const q = quayAt(x, z);
+      if (q) return q < 0 ? 'water' : map.heightAt(x, z) > 0.05 ? 'sidewalk' : 'road';
       if (z > SHORE) return 'water';
       if (z > 50) return 'sand';
       if (!zoneAt(x, z)) return 'dirt';

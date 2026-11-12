@@ -18,6 +18,9 @@ export function createSkyline(scene, map, heroes = {}) {
   plainFlat(W, Wd.x0, -1600, -320, 50, Y, 0x5f8f5a);
   plainFlat(W, 1600, Wd.x1, -320, 50, Y, 0x77747f);
   plainFlat(W, Wd.x0, Wd.x1, 50, 78, -0.3, 0xf2ddb0);
+  // the port: its quay runs out past the beach line, and east of the quay edge is harbour water
+  plainFlat(W, 1800, 3024, 50, 130, -0.25, 0x8f8c96);
+  plainFlat(W, 3024, Wd.x1, -1600, 78, -0.27, 0x2f7f9a);       // STAND-IN: the sea plane in gfx/sky.js starts at z = 76
   const ground = W.triangles, landmarks = [];
   let towers = 0, tall = 0, top = 0;
   for (const lot of map.lots) {
