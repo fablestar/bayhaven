@@ -100,7 +100,8 @@ export default {
     events.on('ui:tag', (t) => { if (t && t.text) tag(t.text, t.sub, t.colour); });
     events.on('district:entered', (d) => {
       if (!d || !d.id) return;
-      const known = DISTRICTS[slug(d.id)], p = S.player, map = ctx.modules.map;
+      const p = S.player, map = ctx.modules.map, zn = map && map.zone && map.zone(d.id);        // the map knows the district's real name
+      const known = DISTRICTS[slug(d.id)] || (zn && DISTRICTS[slug(zn.name)]) || (zn && [zn.name, '#ff3fa4']);
       let hood = '';
       try { const n = map && map.neighbourhoodAt && map.neighbourhoodAt(p.x, p.z); hood = n ? (n.name || (typeof n === 'string' ? title(n) : '')) : ''; } catch { hood = ''; }
       tag(known ? known[0] : title(d.id), hood === (known && known[0]) ? '' : hood, known ? known[1] : '#ff3fa4');

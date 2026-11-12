@@ -85,7 +85,7 @@ export function createTiles(map) {
         }
       }
       // a district nobody has been to yet is there, faintly
-      g.fillStyle = 'rgba(14, 60, 120, .66)';
+      g.fillStyle = 'rgba(21, 15, 61, .6)';
       for (const zn of map.zones) if (!explored.has(zn.id)) { const q = zn.bounds; g.fillRect(q.x0, q.z0, q.x1 - q.x0, q.z1 - q.z0); }
       return owed;
     },
