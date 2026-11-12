@@ -2,6 +2,31 @@
 
 Built from the notes in `changelog/` by `tools/changelog.mjs`. Newest day first.
 
+## Day 5: Heat
+
+### D5-S1 · Heat
+
+**Shipped**
+
+1. **Crimes.** `src/systems/heat.mod.js`. Listens for `vehicle:crash`, `ped:hit`, `prop:broken`, `weapon:fired`, `vehicle:entered` and the vehicles lane's own carjack `crime`; asks the deputies whether one of them could see it (60 m by day, 45 m at night, 100 degrees either side of a cruiser's nose, a clear line); emits `crime { kind, case, seen, points, x, z, weapon, level }` and adds the points from the bible's table. 100 points is a level. Small crimes stop at 299. Gunfire counts unseen. A cruiser that swings into you does not get you charged with hitting it.
+2. **Heat 1 to 3 and the cruisers.** `src/actors/cops.mod.js`, `cops-brain.js`, `cops-draw.js`. 1, 3 and 5 cruisers. Each is a Tarpon the traffic system holds (so your car hits it and traffic brakes for it) driven by a pursuit brain through the same handling step as the player's car: pull over (8 m behind at heat 1), chase, cut off, ram (alongside, then into the rear quarter, 4 s between tries), box in (front, side and rear slots under 40 km/h), search (the last seen point, then a loop out to 150 m) and leave. White with teal doors, a pink stripe, a push bar and a pink and cyan light bar that flashes and washes the road at night. When you stop, the deputy gets out on your side and walks to your door; at heat 3 he stands behind his car and fires.
+3. **Viewers.** The bible's maths to the letter: in view the meter climbs through the level's range in 90 s and then the level rises; unseen for 1.5 s it drains at 8% of peak a second divided by the level; at zero the heat clears. A drift in view adds 1% of the range a second, a crash at 8 m/s or more 3%, a jump 0.2% a metre. Changing car while nobody can see drops one level at once and keeps the meter's share, once in 20 s. Heat 1 with a unit within 80 m and you above 20 km/h for 20 s is heat 2.
+4. **The LIVE overlay.** `src/ui/live.mod.js`, painted on the HUD canvas so clips include it. A chat of 67 written lines (the bible's 40 A rows for this session and 27 B rows of the same groups, word for word) from 30 usernames, reacting to going live, the level, drifts, jumps, crashes, hiding, car swaps and getaways, with filler between. The Sheriff's ticker under it scrolls 18 lines keyed to the same events.
+5. **Five siren lights** were already a HUD piece reading `state.heat.level`; they now have something to read. **Sirens**: one voice, a wail at heat 1 and 2 and a yelp from 3, as loud as the nearest lit cruiser is close. **The scanner**: 27 dispatcher calls (nine crime kinds at heat 1 to 3), spoken as blips with static before and a beep after, with a subtitle, when a cruiser is within 30 m.
+6. **Booked.** Heat 1 or 2, under 1 m/s, a deputy at your door for 3 s: `player:booked`, 10% of cash up to $5,000, two hours on the clock, on foot at a stand-in point, and our own booking screen (`src/ui/live-booked.js`): the lead holding the board, the cost on a sand panel, Lawyer Larry's card sliding in, a `Walk out` button.
+7. **Test API**: `test.setHeat(n)`, `test.heat()`, and `test.crime`, `test.cops.*`, `test.live()`, `test.heatSound()`. **Clip** `?clip=day-5`: night on the beachfront at heat 3, three cruisers, the chat running.
+8. One art request: `art/requests/veh-sheriff-tarpon.json`.
+
+**Not shipped**
+
+- **Neither finish-early item is done as asked.** Cruisers do not pull over for Mags's horn. Car washes do double the drain (`hidden()` checks for a `carwash` place within 12 m) but no check drives into one, so treat it as untested.
+- **Heat 4 and 5 bring nothing new.** The meter runs (heat 5 clears in 63 s unseen) and five cruisers come; SUVs, vans, roadblocks, spikes and the helicopter are D5-S2. D5.2's "the helicopter exists" is not checked here.
+- **The deputy's shots hurt nobody.** He fires, sparks fly, `cop:fired` and `combat:hit` go out, and nothing takes health off yet.
+- **Weapons are not taken** when booked (there are none), and Lawyer Larry's half price is not there.
+- **The siren lights do not dim with the meter** at heat 1 and 2, and the LIVE pill has no unseen look or "Off air": both live in `src/ui/hud-draw.js`, which this session did not own.
+- "Parked with the engine off", bridges and garages do not hide you. I first made standing still for 2 s count; it halved every escape time, so it came out.
+- Fixed cameras, `threat`, `punch`, `killcop`, `explosion`, `shoot-out`: no weapons or health yet to fire them.
+
 ## Day 4: Downtown (day 4 headline)
 
 ### D4-S1 · Downtown (day 4 headline)
