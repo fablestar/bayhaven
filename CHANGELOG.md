@@ -74,6 +74,26 @@ Also: Bayfront Park is a lawn with palms (its landmark is tier B), kept clear of
 - **The dawn and golden bands** of the mixes: nothing reads the clock for them yet.
 - No art requests were made.
 
+### D4-S4 · Minimap and map
+
+**Shipped**
+
+1. **The minimap.** `src/ui/minimap.mod.js`. A rounded rectangle in the HUD's `minimap` place, bottom left: 133 px at 960 x 540, 120 px on a phone. Up is the car's heading (the camera's on foot); the player's arrow sits at 60% of the height. It shows 300 m across, or 520 m above 60 km/h. It is painted ten times a second on its own canvas and copied onto the HUD canvas each frame, so photos and clips include it.
+2. **Map tiles.** `src/ui/maptiles.js`. One 64 px canvas per 160 m chunk, drawn the first time it is needed from `map.surfaceAt`, `map.depthAt`, `map.lotsInChunk` and `map.roadsInChunk`, then reused by both the minimap and the map screen. A chunk that is all sea or all bare land needs no canvas. At most 400 are kept.
+3. **The blip registry.** `minimap.addBlip({ id, x, z, icon, colour, pulse, edge, label })`, `moveBlip`, `removeBlip`. Fourteen icons, each its own shape as well as its own colour: `player waypoint mission drop house wrench clothes umbrella carwash food marina taxi landmark dot`. Waypoint, mission and drop blips wait on the rim when they are off the map. Every `map.places()` entry is a blip from the start.
+4. **The map screen.** `src/ui/mapscreen.mod.js`. M opens and closes it, and the pause card has a Map row. Drag to pan, wheel, pinch or the round buttons to zoom (0.3 to 4 px a metre), tap to set a waypoint, tap the pin to clear it. District names, landmark icons, every blip, the route, and a line that says how far the waypoint is by road.
+5. **Mute moved from M to 0.** `src/core/input.js` no longer maps M to the press `mute`; the audio lane already listened for 0.
+6. **GPS.** `src/systems/gps.mod.js`. A* over every junction of the road graph, cost length over speed limit, built once at load so a route can cross districts that are not loaded. The route is drawn on the minimap and the map screen in cyan on an ink edge, and on the road as up to 24 faint chevrons. Four times a second the part behind you is dropped; more than 35 m off it, a new route is found. Within 22 m it clears with "You have arrived". Emits `waypoint:set` and `waypoint:cleared`.
+7. **Unexplored districts.** A district is drawn faint on both maps until `district:entered` fires for it. The set is in the save (section `map`).
+8. **The day's drop** is the blip `drop` whenever `modules.drops.active.marker` is `{ x, z }`. A mission adds its marker the same way, with `icon: 'mission'`.
+9. **Both extras:** a distance pill on the minimap while a waypoint is set, and an N tab that rides the rim.
+
+**Not shipped**
+
+- No mission markers exist yet, so the `mission` icon is only exercised by the check.
+- Landmark icons are one shape for every landmark; no per-landmark drawings.
+- No art requests were made.
+
 ## Day 3: On foot (Teo gets out of the car)
 
 ### D3-S1 · On foot (Teo gets out of the car)
