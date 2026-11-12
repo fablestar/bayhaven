@@ -10,3 +10,11 @@ Shapes for every other kind of content are in plan/bible/tech/schemas.md. Conten
 Events I emit: `crowd:formed { id, size }` and `crowd:scattered { id }` (the flash mob). Events I listen to: `drift:end`, `prop:broken` (Drift Night's score board); `weapon:fired`, `peds:rebuilt` (the flash mob).
 
 Stand-ins I left: none.
+
+## Day 5 (session D5-S1)
+
+| Name | Signature | Meaning |
+|---|---|---|
+| `chat.js` | `CHAT: [{ n, on, if, text, tier }]` · `USERS` (30) | The LIVE chat's rows, word for word from the bible: 67 today (the 40 A rows of groups 1, 2, 5, 6, 7, 9, 10, 11, 15, 16 and 27 B rows of the same groups). `on` is a trigger of `modules.live.fire`: `live heat3 filler3 copfire drift jump crash prop pedhit unseen swap dropped mags cleared knockedout`. `if` is an object: `score metres kmh seconds` (at least), `kind`, `lead`, `inCar`, `near: [landmark id, metres]`, `half`, `unseen`, `under`, `first`, `chopper`, `parked`, `gunfire`, `healthUnder` |
+| `scanner.js` | `CALLS[kind] = [heat 1, heat 2, heat 3]` · `CALL_AS` · `DISPATCH_VOICE` · `TICKER: [{ id, on, when, text }]` | 27 of the scanner's calls (the nine A kinds at heat 1 to 3) and the 18 A ticker lines for heat 3 |
+| `clips/day-5.js` | the clip shape plus `heat`, `viewers`, `cops` | Night on the beachfront at heat 3 with three cruisers |

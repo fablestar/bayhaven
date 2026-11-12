@@ -1,0 +1,12 @@
+{
+  "id": "veh-sheriff-tarpon",
+  "kind": "model:vehicle",
+  "replaces": "vehicle:tarpon-sheriff",
+  "ask": "A four-door family sedan as a county sheriff's cruiser. Low-poly toy style, big flat faces, no fine detail. White body, teal door panels, one pink stripe along each side from nose to tail, a low light bar on the roof with a pink lamp on the left and a cyan lamp on the right, a dark push bar on the nose. No lettering, no badges, no star, generic shape.",
+  "size": { "l": 4.7, "w": 1.85, "h": 1.58 },
+  "budget": { "tris": 3000, "bytes": 200000 },
+  "parts": ["body", "lamp_l", "lamp_r", "wheel_fl", "wheel_fr", "wheel_rl", "wheel_rr"],
+  "views": "three-quarter front, side",
+  "why": "It is in every chase and in the day 5 clip. The code version is the traffic Tarpon with a livery overlay (src/actors/cops-draw.js).",
+  "tier": "A", "asked": "d5-s1"
+}

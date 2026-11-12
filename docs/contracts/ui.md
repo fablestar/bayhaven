@@ -46,3 +46,15 @@ For other lanes:
 - Motion: `state.settings.reduceMotion` is honoured by the HUD only; the camera should read it.
 - Garage: `src/vehicles/subtitle.js` can go; the HUD draws `ui:toast { kind: 'subtitle' }` and hides `#car-subtitle`.
 - Player: `src/actors/foottouch.js` can go once `index.html` drops `#touch`; this lane then makes every button.
+
+## The LIVE overlay (session D5-S1: `live.mod.js`, `live-booked.js`)
+
+| Name | Signature | Meaning |
+|---|---|---|
+| modules.live | `say(user, text)` · `fire(trigger, data) → rows queued` · `line(on, data, force)` (the ticker) · `rows` · `ticker` · `up` · `booked { show(data), hide(), open, info() }` · `stats` | Painted on the HUD canvas after the HUD and the minimap (render order 73), in its own boxes: the chat under the clock (D: 320 x 130, five rows; P: 220 x 60, three; portrait: left, under the minimap) and the Sheriff's ticker under it (D from heat 3, P from heat 4, none in portrait). Up while heat is 3 or more and for 4 s after it clears. A row is `user: line`, the name pink, cyan or mango by its number; it comes in from below in 180 ms, lives 6 s and fades over the last 800 ms. An event shows two to four matching rows over 2 s; after 4 quiet seconds filler runs at 0.5 a second at 1,000 viewers up to 4 at 200,000. A row is not one of the last three shown, and not one of the last 30 if another fits. One soft ping per row on the `ui` bus, four a second at most |
+| the booking screen | `#booked`, a page overlay holding one 900 x 560 canvas and the `Walk out` button | Shown on `player:booked`: the lead with the board (`Marlin County`, the name, `No. 0005` from the build day), the sand panel with the cost, Lawyer Larry's card sliding in at 1.8 s. Leaves on the button, Enter, Space, Esc or after 6 s. It does not pause the game |
+| test | `test.live()` → `{ up, shown, rows, ticker, tickerLines, onHud, box, stats, lines, tierA, users, booked }` | |
+
+Listens: `heat:changed`, `heat:live`, `heat:cleared`, `heat:dropped`, `drift:end`, `jump:landed`, `vehicle:crash`, `prop:broken`, `ped:hit`, `vehicle:destroyed`, `vehicle:entered`, `cop:fired`, `crime`, `player:knockedout`, `player:booked`, `game:reset`, `hud:layout`, `view:resize`. Emits nothing.
+
+Not done here: the siren lights do not dim with the meter at heat 1 and 2, and the LIVE pill has no unseen look or `OFF AIR` (both are pieces in `hud-draw.js`, outside this session's files). Tapping the pill does nothing (the helicopter cam is D5-S2).
