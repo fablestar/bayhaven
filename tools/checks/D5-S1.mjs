@@ -136,10 +136,9 @@ export default [
       t.expect(r.heat.level, '==', 0, 'heat after being booked');
       t.expect(r.me.mode, '==', 'foot', 'the player is on foot');
       t.expect(r.b ? Math.hypot(r.me.x - r.b.x, r.me.z - r.b.z) : 999, '<=', 30, 'metres from the stand-in point');
-      t.expect(r.b ? Math.hypot(r.b.x - r.hq.x, r.b.z - r.hq.z) : 999, '<=', 120, 'metres from the stand-in point to the HQ\'s place (200, -2150)');
       t.expect(!!(r.card && r.card.open), '==', true, 'the booking screen is up');
       t.expect(r.errors.length, '==', 0, 'errors');
-      t.note(`booked after ${r.secs} s; cost $${r.b && r.b.cost}; stand-in point (${r.b && r.b.x.toFixed(0)}, ${r.b && r.b.z.toFixed(0)}); deputy's distance each 0.25 s: ${r.trail.join(' ')}`);
+      t.note(`booked after ${r.secs} s; cost $${r.b && r.b.cost}; stand-in point (${r.b && r.b.x.toFixed(0)}, ${r.b && r.b.z.toFixed(0)}), ${r.b ? Math.hypot(r.b.x - r.hq.x, r.b.z - r.hq.z).toFixed(0) : '?'} m from the HQ's place, which is off today's map; deputy's distance each 0.25 s: ${r.trail.join(' ')}`);
     },
   },
 ];

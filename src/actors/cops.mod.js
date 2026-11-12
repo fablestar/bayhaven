@@ -169,7 +169,7 @@ export default {
       u.d = Math.hypot(p.x - v.x, p.z - v.z); u.speed = Math.hypot(v.vf, v.vl);
       u.lit = W.level > 0; u.fast = W.level >= 3;
       if (v.kind === 'loose') { u.stillT = 0; return; }           // spun out: traffic has it until it rests
-      if (u.deputy.out) { u.inp.gas = 0; u.inp.steer = 0; u.inp.brake = 1; u.inp.handbrake = true; u.state = 'stop'; }
+      if (u.deputy.out) { u.inp.gas = 0; u.inp.steer = 0; u.inp.brake = v.vf > 0.4 ? 1 : 0; u.inp.handbrake = true; u.state = 'stop'; }
       else brain.think(u, W, dt);
       // the catch-up allowance: a unit far behind is held to at least 1.08 times the player's speed
       if (u.boost > 0 && v.vf > 8 && v.vf < u.boost && Math.abs(v.steer) < 0.25) v.vf += 5 * dt;

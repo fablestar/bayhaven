@@ -20,7 +20,7 @@ export function createBrain({ nav, collide, map, rnd }) {
     inp.steer = clamp(ang * 1.9, -1, 1);
     if (a > 1.3) vd = Math.min(vd, 6); else if (a > 0.7) vd = Math.min(vd, 10); else if (a > 0.35) vd = Math.min(vd, 17);
     inp.gas = v.vf < vd ? 1 : 0;
-    inp.brake = v.vf > vd + 1.5 ? clamp((v.vf - vd) / 6, 0.25, 1) : 0;
+    inp.brake = v.vf > vd + 1.5 && v.vf > 0.4 ? clamp((v.vf - vd) / 6, 0.25, 1) : 0;      // (a brake held at a standstill is reverse)
     inp.handbrake = a > 1.1 && v.vf > 11;
     return ang;
   }
@@ -106,7 +106,7 @@ export function createBrain({ nav, collide, map, rnd }) {
     const at = path(u, tx, tz, time);
     if (u.corner) vd = Math.min(vd, 12);
     const ang = aim(u, at.x, at.z, vd, inp);
-    if (state === 'stop' && vd === 0) { inp.gas = 0; inp.brake = 1; inp.steer = 0; }
+    if (state === 'stop' && vd === 0) { inp.gas = 0; inp.brake = v.vf > 0.4 ? 1 : 0; inp.handbrake = true; inp.steer = 0; }
     // stuck: wanting to go, not going
     if (inp.gas > 0 && Math.abs(v.vf) < 0.8 && vd > 2) { u.stuckT += dt; if (u.stuckT > 1.2) { u.stuckT = 0; u.revT = 1.1; u.revSteer = Math.sign(ang) || 1; } } else u.stuckT = Math.max(0, u.stuckT - dt);
   }

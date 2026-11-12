@@ -162,8 +162,10 @@ export default {
       eco.cash -= cost;
       if (cost) ev.emit('cash:changed', { cash: eco.cash, by: -cost, why: 'booked' });
       clear('booked');
-      const road = m.map.nearestRoad ? m.map.nearestRoad(NUM.hq.x, NUM.hq.z) : null;
-      const at = road && road.d < 80 ? { x: road.x + Math.cos(road.heading) * (road.width / 2 + 1.5), z: road.z - Math.sin(road.heading) * (road.width / 2 + 1.5) } : { x: NUM.hq.x, z: NUM.hq.z };
+      // the HQ's place, pulled inside today's map (Northgate is not built yet), then the kerb of the nearest road
+      const B = m.map.bounds, hx = B ? Math.max(B.x0 + 80, Math.min(B.x1 - 80, NUM.hq.x)) : NUM.hq.x, hz = B ? Math.max(B.z0 + 80, Math.min(B.z1 - 80, NUM.hq.z)) : NUM.hq.z;
+      const road = m.map.nearestRoad ? m.map.nearestRoad(hx, hz) : null;
+      const at = road && road.d < 200 ? { x: road.x + Math.cos(road.heading) * (road.width / 2 + 1.5), z: road.z - Math.sin(road.heading) * (road.width / 2 + 1.5) } : { x: hx, z: hz };
       if (m.player) { if (m.player.mode === 'car') m.player.exit(); m.player.teleport(at.x, at.z, 0); }
       if (m.chunks && m.chunks.ensure) m.chunks.ensure(at.x, at.z, 1);
       if (m.clock && m.clock.set) m.clock.set((S.clock.hour + NUM.bookHours) % 24);
