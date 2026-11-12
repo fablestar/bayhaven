@@ -38,3 +38,13 @@ Stand-ins I left: none.
 | `cast.js` | `CAST.<id> { name, voice { wave, hz, ms, rate, end }, shirt, skin, hair, hat, hatColour }` · `VIA` | Who speaks: `mags teo marco wendell guide`. A speaker not listed gets their id as a name and a 220 Hz blip |
 | `drops/day-6.js` | the drop shape; returns `{ id, score { best, last, runs, finished, x, z }, running, ghost, recorded, begin(), label(), reset(), update(dt) }` · `CUP` | "The Getaway Cup": a mango ring at `(-1238, -208)` starts mission 1 in cup mode from its `enter` step. The run is sampled four times a second; the best is kept (in `localStorage` under `bayhaven.cup`, not with `?test=1`) and driven beside you as a see-through cyan coupe. `test.cup()`, `test.cup.begin()` |
 | `clips/day-6.js` | the clip shape plus `mission` | Golden hour at the plaza: the third ram, the scooter slides to the kerb, the cut to the postcard |
+
+## Day 6, the phone (session D6-S2)
+
+| Name | Signature | Meaning |
+|---|---|---|
+| `squawk.js` | `SQUAWK: [{ n, on, if, who, text, tier }]` · `ACCOUNTS` · `HANDLES` · `REPLIES: [{ to, text }]` | The 40 tier A templates of `bible/voices/squawk.md`, word for word, with its row numbers. `if`: `min { field }`, `max { field }`, `is { field: value or [values] }`, `lead`, `he` (skipped while Mags leads), `after` (the weather before), `shots`. `kmh` is read from the payload's `speed`. `REPLIES` are seven lines for the Sheriff's account (`to` a row number, or `'mention'`) |
+| `messages.js` | `MESSAGES: [{ id, from, to, on, when { id }, text, waypoint, once, tier }]` · `SENDERS.<id> { name, hz }` | The 22 mission offers of `bible/story/messages.md`, word for word |
+| `missions/03-repo-woman.js` | the mission shape | Mission 3: eleven engine steps (the bible's ten and a closing `say`), all 39 lines, Chad as a scripted Grouper down Coral Boulevard |
+| `missions/07-as-seen-on-tv.js` | the mission shape | Mission 7: six engine steps, all 30 lines, a parked Tarpon in the Sheriff's colours on Rosa Street to honk at |
+| `cast.js` | adds `chad rucker deputy` | |

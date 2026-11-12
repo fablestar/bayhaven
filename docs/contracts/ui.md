@@ -84,3 +84,7 @@ For core: on foot the pad's triggers still walk (input.js adds gas and brake to 
 Emits `mission:stamped { id, failed }`, `ui:toast` (a new job on offer), `ui:tag` (the mission's name when it starts). Listens: `mission:*`, `hud:layout`, `view:resize`, its own `keydown` and `pointerdown`.
 
 Rough: the rubber stamp sits where the kit puts it (centre 760, 190), which overlaps the end of the `Time` line. The objective block is not a piece of `hud.layout()`; `rects()` gives its place.
+
+## The phone's screen (session D6-S2: `src/ui/phone/`)
+
+Page elements, made by `src/systems/phone.mod.js` (its contract is in `systems.md`): `#phone` (z 38; D 360 x 720 at right 80, top 180 when the window is at least 1000 x 900; otherwise P 300 x 366 at right 14, top 12), `#phone-veil` (ink 25%, z 37), `#phone-pill` (a new text, above the HUD's `minimap` rectangle), `#photo-ui` (photo mode's drag area, buttons and the card it shows after a shot, z 45). The menu veil (z 40) covers the phone, so Map and Settings open over it. `shell.js` exports `ICONS`, `PHONE_CSS`, `skyOf(hour)`, `createShell`. Body classes: `photo-mode`, `photo-nohud`.
