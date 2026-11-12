@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { sheet } from './models.js';
 
-const ENGINE = 0x3a3844, GAP = 0x1b1924, VERTS = 36;
+const ENGINE = 0x3a3844, GAP = 0x1b1924, BUMPER = 0x2a2a34, VERTS = 36;      // bumpers are cut from the dark sill, so they stay dark
 // the corners of a unit box, two triangles a face, with the face's normal
 const FACES = [[[1, 0, 0], [1, -1, -1], [1, 1, -1], [1, 1, 1], [1, -1, 1]], [[-1, 0, 0], [-1, -1, 1], [-1, 1, 1], [-1, 1, -1], [-1, -1, -1]],
   [[0, 1, 0], [-1, 1, -1], [-1, 1, 1], [1, 1, 1], [1, 1, -1]], [[0, -1, 0], [-1, -1, 1], [-1, -1, -1], [1, -1, -1], [1, -1, 1]],
@@ -34,8 +34,8 @@ export function panelDefs(model) {
       half: [0.02, h / 2, dl / 2], axis: 'y', rest: 0, dent: 0, open: -side * 1.2, under: GAP, side });
   }
   const bl = 0.15 * base.L, bw = base.W / 2 + 0.03, yb = base.y + base.H / 2, hang = Math.min(0.5, Math.asin(Math.min(1, (yb - 0.06) / (2 * bw))));
-  out.push({ name: 'bumperF', zone: 'front', pivot: [bw, yb, base.L / 2 - bl / 2 + 0.04], c: [-bw, 0, 0], half: [bw, 0.11, bl / 2], axis: 'z', rest: 0, dent: 0.05, open: hang, under: GAP, drags: true });
-  out.push({ name: 'bumperR', zone: 'rear', pivot: [-bw, yb, -base.L / 2 + bl / 2 - 0.04], c: [bw, 0, 0], half: [bw, 0.11, bl / 2], axis: 'z', rest: 0, dent: -0.05, open: -hang, under: GAP, drags: true });
+  out.push({ name: 'bumperF', zone: 'front', pivot: [bw, yb, base.L / 2 - bl / 2 + 0.04], c: [-bw, 0, 0], half: [bw, 0.11, bl / 2], axis: 'z', rest: 0, dent: 0.05, open: hang, under: GAP, drags: true, color: BUMPER });
+  out.push({ name: 'bumperR', zone: 'rear', pivot: [-bw, yb, -base.L / 2 + bl / 2 - 0.04], c: [bw, 0, 0], half: [bw, 0.11, bl / 2], axis: 'z', rest: 0, dent: -0.05, open: -hang, under: GAP, drags: true, color: BUMPER });
   return out;
 }
 
@@ -56,7 +56,7 @@ export function createPanels(parent, model, paint) {
 
   function write(p) {
     const gone = p.state === 3, ang = gone ? p.rest : p.rest + p.a, cs = Math.cos(ang), sn = Math.sin(ang), o = p.i * VERTS * 3;
-    c.set(wreck ? 0x2b2838 : gone ? p.under : paint); if (p.state === 1 || p.state === 2) c.multiplyScalar(0.85);
+    c.set(wreck ? 0x2b2838 : gone ? p.under : p.color === undefined ? paint : p.color); if (p.state === 1 || p.state === 2) c.multiplyScalar(0.85);
     const k = gone ? 0.96 : 1;
     let at = o;
     for (const f of FACES) {

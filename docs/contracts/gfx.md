@@ -6,13 +6,13 @@
 | materials.js | `chunkMaterials() → { G, M, B, N, S, L, leaf, update(night), lit }` | The seven materials every streamed chunk, shell, the skyline and the decor share |
 | atlas.js | `signAtlas()`, `grainTexture()`, `signUV(i)`, `SHOP_SIGNS` | Day 1's two canvases, made once. The sign sheet has 16 cells of 512×128; four new shop names fill the last four |
 | modules.sky | `night` (0 to 1) · `sunDir` · `update(hour, time, camera)` · `setFog(near, far)` | Sky, sun, sea, fog and lights from the clock. Fog distances come from the quality table. The sea is 6.8 km wide |
-| modules.fx | `puff(x, y, z, vx, vz)` · `sparks(x, y, z, nx, nz, count)` · `skid(tyre, x, z, on)` · `shake(metres)` · `shakeX shakeY` · `count(kind)` · `seed(n)` | Caps: 96 puffs, 250 sparks, 300 skid pieces (24, 100, 60 on `low`), fixed at load |
+| modules.fx | `puff(x, y, z, vx, vz)` · `sparks(x, y, z, nx, nz, count)` · `skid(tyre, x, z, on)` · `shake(metres)` · `shakeX shakeY` · `count(kind)` · `seed(n)` · `emit(id, x, y, z, opts) → made` · `smoke(x, y, z, { vx vy vz, s0 s1, life, c0 c1, a, glow, grav })` · `bit(x, y, z, vx, vy, vz, { life, c0 c1, grav, len, w })` · `debris(x, y, z, { sx sy sz, color, vx vy vz, spin, life, onLand }) → piece` · `scorch(x, z, r, seconds)` · `debrisCap(n)` · `debrisMax()` · `debrisPeak()` · `pieces` · `steamHook(puff)` | Four draw calls: the `smoke` family (120 alive on `low`, 500 otherwise; the first 24 / 96 are tyre smoke), `sparks` (100 / 400), skid and scorch marks (60 / 300 quads) and `debris`, one instanced mesh of boxes capped at `quality.debrisCap` (40, 80, 120), oldest used again; the cap follows `quality:changed`. `emit` ids (bible/art/vfx.md): `engine-smoke`, `engine-fire`, `column`, `geyser` (steady: pass `dt`), `explosion`, `glass`, `prop-bits` (`kind: 'fence'` or `'palm'`), `landing`. Nothing is made over 120 m from the camera (80 on `low`). Colours are linear `[r, g, b]`. `count`: `smoke tyre sparks skid debris`. `steamHook` is called with each new tyre puff and does nothing yet: wet-road steam goes there. Files: `fx.js`, `fx-debris.js`, `fx-recipes.js`. Test: `test.fx()` |
 
 Events I emit: none.
 
 Events I listen to: `vehicle:crash` and `vehicle:scrape` (sparks, shake), `prop:broken` (shake).
 
-Stand-ins I left: none. Not yet matching the bible: `fx.emit`, `fx.ribbon`, `fx.flash`, `fx.debris`, and the `atlas` module.
+Stand-ins I left: none. Not yet matching the bible: `fx.ribbon`, `fx.flash`, the `bits`, `beams` and `glow` families (glass and drops are drawn as `sparks`, the explosion's glow as `smoke`), the 16-cell fx atlas, particles in typed arrays, bursts spread over frames, smoke trails behind debris, and the `atlas` module.
 
 ## Day 4 (session D4-S1)
 

@@ -1,0 +1,10 @@
+{
+  "id": "sfx-explosion",
+  "kind": "sfx",
+  "replaces": "sfx:explosion",
+  "ask": "A car blowing up in the street, heard from a few metres away. A sharp crack, a deep boom that drops in pitch, then a second or two of small bits of metal and glass rattling down on tarmac. Big but short and a little cartoonish, not a war film. Mono, no music, no voices.",
+  "seconds": 2.8,
+  "budget": { "bytes": 30000 },
+  "why": "It ends every wrecked car, so it is heard many times an hour and is in most chase clips. The code version is filtered noise and a sine drop (src/vehicles/mayhem-sound.mod.js, recipe 55 in the sound bible).",
+  "tier": "A", "asked": "d5-s3"
+}

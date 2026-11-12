@@ -29,7 +29,7 @@ Events I emit:
 | `vehicle:scrape` | `{ x, z, nx, nz, speed }`, sliding along a wall above 8 m/s |
 | `vehicle:gear` | `{ gear, up }`, gear 1 to 4 |
 | `vehicle:entered` | `{ model }`, the player is now in this model |
-| `prop:broken` | `{ kind, x, z, speed }`, kind is `lamp`, `lampLong`, `barrier` or `cone` |
+| `prop:broken` | `{ kind, x, z, speed }`, kind is `lamp`, `lampLong`, `barrier`, `cone`, `hydrant`, `table`, `chair`, `fence` or `sign` (the player's car only). The World lane's breakables module adds `palm` |
 | `traffic:honk` | `{ x, z, id, seconds }`: a driver was cut off, hit or is stuck behind something. Nothing plays it yet (the audio lane's to pick up) |
 | `vehicle:hop` | `{ x, z, model }`, the Flounder left the ground |
 | `rider:thrown` | `{ x, z, dv, why: 'hit' or 'slide', model, damage }`; `damage` is the bible's `clamp((dv - 5) * 4, 5, 35)`, for whoever owns health |
@@ -58,3 +58,20 @@ Not yet matching the bible: no lane changes (a car takes whatever its lane allow
 Events: `chopper:arrived { n, seconds }`, `chopper:left { n }`, `chopper:cam { on }`, one `ui:toast` hint a chase. Listens: `game:reset`, `heat:cleared`, its own `keydown` for V.
 
 Not built: shooting it down (health 100), the Horsefly's speaker and marksman, cover from bridges and garages (none on the map yet).
+
+## Damage, panels, the ambulance (session D5-S3)
+
+| Name | Signature | Meaning |
+|---|---|---|
+| modules.damage (`damage.mod.js`) | `health(v = the player's car)` · `stage(v)` · `hurt(v, n, { dv, zone, blast })` · `hit(v, dv, zone)` · `repair(v)` · `explode(v)` · `panels` · `numbers` · `stats { hits, destroyed, bails, died, panelsLost, glass }` | Health for the player's car and every traffic car within 90 m. A change of speed over 3 m/s in one step is a hit: `max(0, dv - 3) * 0.8` off (× 0.5 Manatee, 1.5 Pinfish, 2 Needlefish). Stages: 0 fine, 1 under 60 (dents, a cracked light), 2 under 40 (smoke), 3 under 20 (fire, an 8 s fuse), 4 destroyed. The blast takes up to 60 off vehicles and 120 off people within 6 m, `(1 - d / 6)`; a car it finishes goes up 0.5 s later. Other lanes that want to hurt a car (bullets, spike strips) call `hurt`. Also sets `v.health` on the vehicle, and `state.vehicle.health` if core has that key |
+| the player's car adds | `dead` (destroyed: no engine, wheels locked) · `body` (the group that leans, for panels) | Repair is free at the spawn: `game:reset` puts health back to 100 and every panel on. Taking another car starts at 100 |
+| `panels.js` | `panelDefs(model)` · `createPanels(parent, model, paint) → { list, get(name), zone(zone), setState(p, state), dentAll(), setWreck(on), repair(), step(dt, speed, spin), draw() }` | Hood, boot lid, two doors and two bumpers on the hero build, placed from the model sheet. States: 0 on, 1 dented, 2 loose (flaps on a spring), 3 gone. One mesh, one draw call, 72 triangles. Two-wheelers have none; a model with no `cabin` piece has no doors or boot |
+| a traffic car adds | `health` · `noDriver` · `ambulance` | Traffic cars have no panels: damage is darker paint (× 0.85, 0.7, 0.5, then `#2b2838`), and a box in the debris pool where a panel would fall |
+| modules.traffic adds | `loosen(car)` · `wreck(car)` | A driver who stops driving (the car brakes to rest; at 40 health or less it is abandoned instead of rejoining its lane), and a car finished where it stands |
+| modules.ambulance (`ambulance.mod.js`) | `active [{ v, state: 'drive' 'scene' 'leave', goal, taken }]` · `calls` · `stats { calls, sent, arrived, collected, left, siren }` · `numbers` | A white Pompano with a red and white bar. Called 5 s after `ped:down`, starts 150 to 260 m off, follows `nav.route` at up to 16 m/s, brakes for cars ahead and pulls out round a standing one, stops within 8 m, takes 6 s a person (3 at most, within 15 m), leaves towards `(-500, -1700)` and is removed 180 m from the player. 1 at once on `low`, 2 otherwise. It is moved by this module (a standing `wreck` to traffic); rammed hard it is just a loose Pompano |
+| modules.mayhemsound (`mayhem-sound.mod.js`) | `play(id, x, z, level)` · `stats` | STAND-IN for `audio.sfx`: `glass explosion hydrant splinter clatter thud` from the recipes in `bible/art/sfx.md`, by distance, and the geyser's loop |
+| test | `test.damage(id?) → { health, stage, smoking, burning, fuse, dead, wreckBurning, driver, lost, paint, panels { name: { state, angle } }, tracked, stats }` · `test.damageHit(dv, zone, id?)` · `test.damageSet(health, id?)` · `test.repair()` · `test.ambulance()` · `test.mayhemSound()` | `id` is a traffic car's id; without it, the player's car |
+
+Events (D5-S3): `vehicle:damaged { id, model, health, stage, was, x, z, player }` on a change of stage · `vehicle:destroyed` and `vehicle:blast` `{ id, model, x, z, player, inside (the player was in it), driverDied, radius: 6 }` · `panel:fell { id, name, x, z, player }` (also when the thrown hood lands) · `driver:bailed { id, model, x, z, person }` · `traffic:ambulance { x, z, step: 'called' 'sent' 'arrived' 'left', why }` · `ped:collected { id, x, z }` · one `ui:toast` when the player's engine catches fire. Listens: `game:reset`, `vehicle:entered`, `ped:down`, `prop:broken`, `geyser:start`, `coconut:landed`, `ped:hit`. If `modules.combat.damagePlayer` exists it is called for the player inside a blast (200) or near one.
+
+Not built (D5-S3): the hero-build swap for traffic cars (3 on `low`, 6 on `high`), top speed × 0.9 and pull × 0.85 while smoking, the wandering steering while burning, tailgates and roll doors, a damaged car keeping its health when the player takes it, the ambulance's medics and its Sheriff Tarpon, traffic pulling over for it.

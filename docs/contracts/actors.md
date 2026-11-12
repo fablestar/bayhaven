@@ -38,7 +38,7 @@ Not built yet: climbing ledges, swimming (he stops at 0.9 m deep), taking a movi
 | a crowd | `{ id, x, z, streetCap, members, beat }` from `peds.crowd(def)` | Members are in state `crowd`: they have no brain, the crowd's owner moves them and sets `p.beat`; the dance is drawn from `beat` (104 beats a minute, four moves of two beats). While a crowd is within 150 m the street target drops to its `streetCap` |
 | pedsdraw.js | `createPedDraw(scene, cap)` → `dress(i, look)` · `pose(i, p, angles, groundY, night)` · `rope(i, p, rope, groundY)` · `birds(x, y, z, t)` · `hide(i)` · `begin()` · `end(n, night)` · `calls` · `meshes` · `shadows` · `atlas` | Eight draw calls: head, torso, two arms, two legs, one mesh of unit boxes (hair, hats, bags, phones, birds) and blob shadows. Seven share one material and the 256 x 128 people atlas; each instance has `aTint`, `aSkin` and `aCell`. Capacity 192 / 224 / 256 by quality |
 | pedspose.js | `poseFor(p, t, out, far)` · `dance(out, beat)` · `DANCE` | Angles for every state. No three.js |
-| pedstumble.js | `startRope(x, y, z, h, scale, vx, vz)` · `stepRope(rope, dt, groundAt) → done` · `TUMBLE` | The ten-point rope (bible/tech/algorithms.md section 8). The bible names this file `tumble.js`; it is `pedstumble.js` because this session owned `peds*.js` |
+| tumble.js | `startRope(x, y, z, h, scale, vx, vz)` · `stepRope(rope, dt, groundAt) → done` · `TUMBLE` · `HIT { health: 50, hardKmh: 50, spare: 10, downFor: 120, downUnseen: 45 }` · `hitOutcome(kmh, health) → { health, down }` | The ten-point rope (bible/tech/algorithms.md section 8), and what a hit does: `kmh - 10` health off; over 50 km/h or at zero health they stay down. Was `pedstumble.js` until D5-S3 |
 
 Test API entries: `test.peds.stats()` → `{ count, within, street, target, cap, streetCap, calls, filming, interest, down, byState, byKind, frozen, crowdScale, gained, ms, drawMs, triangles, hits, dodges, spawned, fled, waits, jaywalks }` · `test.peds.list(radius)` · `test.peds.get(id)` · `test.peds.spawn(kind, x, z, h, { state, sub, seconds })` · `test.peds.clear()` · `test.peds.auto(on)` · `test.peds.fill()` · `test.peds.trigger(seconds, code)` · `test.peds.freeze(seconds, range)` · `test.peds.show(on)` · `test.peds.mix(district, hour)` · `test.peds.target(district, hour)` · `test.peds.pose(id)` · `test.peds.kinds()`.
 
@@ -47,6 +47,7 @@ Events people emit:
 | Event | Data |
 |---|---|
 | `ped:hit` | `{ speed, kmh, x, z, kind, id, by: 'player' or 'traffic' }`; speed in m/s, for a vehicle at 10 km/h or more |
+| `ped:down` | `{ id, kind, x, z, cause: 'vehicle' or 'blast', by: 'player', 'traffic' or 'blast' }` when someone hit hard has come to rest. They stay in state `down` (the lying pose, no birds) until an ambulance takes them, 45 s out of view, or 120 s |
 | `ped:gotup` | `{ id, kind, x, z }` when someone knocked over is on their feet again (new name; the barks session's "getting up" line can hang on it) |
 | `ped:filming` | `{ count }`, at most twice a second, when the number of phones up changes |
 | `ped:fled` | `{ count }`, people who started running since the last one |
@@ -58,7 +59,9 @@ People also add to `state.economy.followers`: 5 a second for each phone up while
 
 Stand-ins: none.
 
-People, not built yet: the `down` state, health and ambulances (a hit at any speed is a tumble and a get-up), cars stopping for people (traffic's job), people as solid bodies against the player on foot, stepping up to 8 m for a clear view while filming, fame reactions, barks, running for an awning, the queue and towel crowds as crowd objects (towels are just two to four beachgoers spawned together), per-chunk despawn.
+D5-S3 added to modules.peds: `downed(out)`, `blast(x, z, r)` (everyone inside is thrown outwards; `120 × (1 - d / r)` against their health decides who stays down; also run on `vehicle:blast`), `scare(person, x, z)`, and `state.peds.down`.
+
+People, not built yet: the greying of a person who is down and their longer shadow, bystanders who kneel to help, health lost to anything but vehicles and blasts, cars stopping for people (traffic's job), people as solid bodies against the player on foot, stepping up to 8 m for a clear view while filming, fame reactions, barks, running for an awning, the queue and towel crowds as crowd objects (towels are just two to four beachgoers spawned together), per-chunk despawn.
 
 ## Deputies (session D5-S1: `cops.mod.js`, `cops-brain.js`, `cops-draw.js`)
 

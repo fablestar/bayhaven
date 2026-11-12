@@ -53,11 +53,11 @@ export default {
     function publish() { const r = recs.get(car.id); if (r && S.vehicle) S.vehicle.health = r.health; }
 
     // a piece comes off: the panel is gone from the car and a box of its size takes its place in the debris pool
-    function shed(r, name, size, lx, ly, lz) {
+    function shed(r, name, size, lx, ly, lz, color) {
       if (r.lost[name]) return;
       r.lost[name] = true; stats.panelsLost++;
       const v = r.v; local(v, lx, lz, w); vel(v, pv);
-      if (fx()) fx().debris(w.x, (v.y || 0) + ly, w.z, { sx: size[0], sy: size[1], sz: size[2], color: r.stage > 0 ? dim(r.paint0, 0.85) : r.paint0, vx: pv.x * 0.7 + (Math.random() - 0.5) * 2, vy: 2.5, vz: pv.z * 0.7 + (Math.random() - 0.5) * 2, spin: 5, life: 5 });
+      if (fx()) fx().debris(w.x, (v.y || 0) + ly, w.z, { sx: size[0], sy: size[1], sz: size[2], color: color !== undefined ? color : r.stage > 0 ? dim(r.paint0, 0.85) : r.paint0, vx: pv.x * 0.7 + (Math.random() - 0.5) * 2, vy: 2.5, vz: pv.z * 0.7 + (Math.random() - 0.5) * 2, spin: 5, life: 5 });
       ev.emit('panel:fell', { id: v.id, name, x: w.x, z: w.z, player: v === car });
     }
     function dropPanel(r, name) {
@@ -66,13 +66,13 @@ export default {
         const p = panels.get(name);
         if (!p || p.state === 3) return;
         panels.setState(p, 3); panels.centre(p, w);
-        shed(r, name, [p.half[0] * 2, p.half[1] * 2, p.half[2] * 2], w.x, w.y, w.z);
+        shed(r, name, [p.half[0] * 2, p.half[1] * 2, p.half[2] * 2], w.x, w.y, w.z, p.color);
       } else if (!sheet(v.model).two) {
         const side = name === 'doorL' ? 1 : -1;
         if (name === 'hood') shed(r, name, [v.hw * 1.8, 0.05, 1.1], 0, 0.95, v.hl * 0.6);
         else if (name === 'boot') shed(r, name, [v.hw * 1.8, 0.05, 0.9], 0, 0.95, -v.hl * 0.7);
         else if (name.startsWith('door')) shed(r, name, [0.05, 0.6, 1.1], side * (v.hw + 0.1), 0.7, 0);
-        else shed(r, name, [v.hw * 2, 0.2, 0.3], 0, 0.35, name === 'bumperF' ? v.hl : -v.hl);
+        else shed(r, name, [v.hw * 2, 0.2, 0.3], 0, 0.35, name === 'bumperF' ? v.hl : -v.hl, 0x2a2a34);
       }
     }
     function loosen(zone) { if (panels) for (const p of panels.zone(zone)) panels.setState(p, 2); }
